@@ -25,12 +25,21 @@ npm run check:production
 在项目根目录执行。将示例远程地址替换成实际仓库地址：
 
 ```powershell
+git remote add origin https://github.com/<owner>/<repository>.git
+git branch -M main
+git add .
+git commit -m "Prepare deployment"
+git push -u origin main
 ```
 
 如果本地仓库已经有 `origin`，先检查：
 
 ```powershell
+git remote -v
+git status
 ```
+
+本次检查不会访问 GitHub，也不会执行上述推送命令；这些命令仅供部署者在确认仓库地址和提交内容后手动执行。
 
 不要在公开仓库中设置或提交 API Key。AI 页面中的密钥只随当前请求发送给上游服务，不写入项目文件或浏览器 `localStorage`。
 

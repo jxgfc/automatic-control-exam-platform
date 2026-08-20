@@ -78,7 +78,7 @@ http://192.168.1.23:4173
 
 1. 将整个项目上传到自己的 GitHub 仓库，不要上传 API Key、`.env` 或浏览器导出的题库数据。
 2. 登录 Render，选择 **New → Blueprint**，连接该 GitHub 仓库。
-3. Render 会读取 `render.yaml`，使用 `npm install` 构建、使用 `npm start` 启动，并用 `/api/health` 做健康检查。
+3. Render 会读取 `render.yaml`，使用 `npm ci --omit=dev` 构建、使用 `npm start` 启动，并用 `/api/health` 做健康检查。
 4. 部署成功后，Render 会提供一个 `https://xxx.onrender.com` 地址，手机、平板和电脑都访问这个地址即可。
 
 云平台必须允许外部端口通过环境变量 `PORT` 注入；本项目已经默认监听 `0.0.0.0`，不再绑定电脑本机回环地址。免费实例可能在一段时间无访问后休眠，第一次打开需要等待几秒唤醒。
