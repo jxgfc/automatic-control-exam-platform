@@ -1,0 +1,43 @@
+(function (root) {
+  "use strict";
+
+  root.ControlSyllabus = [
+    { chapter: "基础概念", topic: "反馈、开闭环、复合控制、连续/离散、线性/非线性系统", schools: ["828", "861"], kind: "简述", status: "theory", tool: "theory" },
+    { chapter: "系统建模", topic: "根据工作原理建立微分方程与系统方块图", schools: ["828", "861"], kind: "分析", status: "available", tool: "modeling" },
+    { chapter: "系统建模", topic: "拉氏变换求解微分方程，建立传递函数", schools: ["828", "861"], kind: "计算", status: "available", tool: "modeling" },
+    { chapter: "系统建模", topic: "典型环节、结构图等效变换与化简", schools: ["828", "861"], kind: "计算", status: "available", tool: "modeling" },
+    { chapter: "系统建模", topic: "信号流图、结构图转换与梅逊公式", schools: ["861"], kind: "计算", status: "available", tool: "modeling" },
+    { chapter: "时域分析", topic: "系统稳定条件与劳斯稳定判据", schools: ["828", "861"], kind: "计算", status: "available", tool: "routh" },
+    { chapter: "时域分析", topic: "一阶系统特征参数与动态性能", schools: ["828", "861"], kind: "计算", status: "available", tool: "second-order" },
+    { chapter: "时域分析", topic: "典型二阶系统动态指标与极点", schools: ["828", "861"], kind: "计算", status: "available", tool: "second-order" },
+    { chapter: "时域分析", topic: "附加闭环零极点、主导极点与高阶系统近似", schools: ["861"], kind: "分析", status: "available", tool: "second-order" },
+    { chapter: "稳态误差", topic: "系统型别、静态误差系数与典型输入稳态误差", schools: ["828", "861"], kind: "计算", status: "available", tool: "steady-error" },
+    { chapter: "稳态误差", topic: "扰动作用、误差传递函数与复合控制误差", schools: ["828", "861"], kind: "计算", status: "available", tool: "steady-error" },
+    { chapter: "根轨迹", topic: "根轨迹方程、幅值条件、相角条件与绘制规则", schools: ["861"], kind: "计算", status: "available", tool: "root-locus" },
+    { chapter: "根轨迹", topic: "实轴分离点、汇合点与对应增益", schools: ["861"], kind: "计算", status: "available", tool: "root-locus" },
+    { chapter: "根轨迹", topic: "参数根轨迹与系统性能分析", schools: ["861"], kind: "分析", status: "available", tool: "root-locus" },
+    { chapter: "频域分析", topic: "频率特性、幅频/相频特性及稳态正弦响应", schools: ["828", "861"], kind: "分析", status: "available", tool: "frequency" },
+    { chapter: "频域分析", topic: "典型环节与开环系统幅相曲线、Bode图", schools: ["828", "861"], kind: "计算", status: "available", tool: "frequency" },
+    { chapter: "频域分析", topic: "由Bode图反求最小相位系统传递函数", schools: ["828", "861"], kind: "分析", status: "theory", tool: "theory" },
+    { chapter: "频域分析", topic: "Nyquist判据、幅值裕度与相角裕度", schools: ["828", "861"], kind: "计算", status: "available", tool: "nyquist" },
+    { chapter: "频域分析", topic: "闭环频域指标及频域与时域指标关系", schools: ["861"], kind: "分析", status: "available", tool: "nyquist" },
+    { chapter: "系统校正", topic: "超前、滞后、滞后-超前与PID校正网络", schools: ["828", "861"], kind: "分析", status: "available", tool: "compensation" },
+    { chapter: "系统校正", topic: "根据性能指标用频率法设计校正装置", schools: ["828", "861"], kind: "计算", status: "available", tool: "compensation" },
+    { chapter: "系统校正", topic: "反馈校正与复合校正", schools: ["828", "861"], kind: "分析", status: "theory", tool: "theory" },
+    { chapter: "离散系统", topic: "信号采样、保持与恢复，差分方程离散化", schools: ["828", "861"], kind: "分析", status: "available", tool: "discrete" },
+    { chapter: "离散系统", topic: "Z变换、Z反变换与部分分式法", schools: ["828", "861"], kind: "计算", status: "available", tool: "discrete" },
+    { chapter: "离散系统", topic: "脉冲传递函数、开环模型与扰动输出", schools: ["828", "861"], kind: "计算", status: "available", tool: "discrete" },
+    { chapter: "离散系统", topic: "Jury判据与离散系统稳定性", schools: ["828", "861"], kind: "计算", status: "available", tool: "discrete" },
+    { chapter: "离散系统", topic: "离散系统动态响应与稳态误差", schools: ["828", "861"], kind: "计算", status: "available", tool: "discrete" },
+    { chapter: "非线性系统", topic: "典型非线性特性描述函数推导", schools: ["828", "861"], kind: "证明", status: "available", tool: "nonlinear" },
+    { chapter: "非线性系统", topic: "描述函数法分析稳定性、自激振荡幅值与频率", schools: ["828", "861"], kind: "计算", status: "available", tool: "nonlinear" },
+    { chapter: "状态空间", topic: "状态空间建模、基本性质与状态方程求解", schools: ["828", "861"], kind: "计算", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "传递函数与状态空间模型相互转换及等价变换", schools: ["828", "861"], kind: "计算", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "状态转移矩阵的性质与计算", schools: ["828", "861"], kind: "计算", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "能控性、能观性判据与系统实现", schools: ["828", "861"], kind: "计算", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "结构分解、能控与能观标准型", schools: ["861"], kind: "计算", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "Lyapunov稳定性定义、定理、方程与应用", schools: ["828", "861"], kind: "证明", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "状态反馈、输出反馈与极点配置", schools: ["828", "861"], kind: "计算", status: "available", tool: "state-space" },
+    { chapter: "状态空间", topic: "状态观测器及带观测器的状态反馈系统", schools: ["828", "861"], kind: "计算", status: "available", tool: "state-space" }
+  ];
+})(typeof globalThis !== "undefined" ? globalThis : this);

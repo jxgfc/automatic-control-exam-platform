@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>自动控制原理考研计算平台</title>
+  <link rel="stylesheet" href="vendor/katex/node_modules/katex/dist/katex.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="personal-home" class="personal-site-home">
+    <nav class="personal-nav" aria-label="个人站导航">
+      <a class="personal-brand" href="#personal-home" aria-label="返回个人主页">
+        <span class="brand-mark" data-profile-avatar aria-hidden="true">控</span>
+        <span><strong data-profile-short-name>控制学习空间</strong><small>personal control lab</small></span>
+      </a>
+      <button class="personal-nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="personal-nav-menu">菜单</button>
+      <div class="personal-nav-menu" id="personal-nav-menu" data-nav-menu>
+        <a class="is-current" href="#personal-home">首页</a>
+        <a href="#learning-platform" data-home-action="platform">学习平台</a>
+        <a href="#site-notes">学习记录</a>
+        <a href="#about-site">关于本站</a>
+      </div>
+    </nav>
+
+    <section class="personal-hero" aria-labelledby="personal-hero-title">
+      <div class="personal-hero-copy">
+        <p class="personal-eyebrow" data-profile-eyebrow>PERSONAL LAB / 2026 考研</p>
+        <div class="personal-hero-title" id="personal-hero-title" role="heading" aria-level="1" data-profile-name>自动控制学习空间</div>
+        <p class="personal-role" data-profile-role>自动控制原理考研学习与计算工具</p>
+        <p class="personal-bio" data-profile-bio>把公式、推导、题目和复盘放在一个安静的工作台里，面向 828 / 861 大纲持续整理。</p>
+        <div class="personal-hero-actions">
+          <a class="personal-primary-action" href="#learning-platform" data-home-action="platform">进入学习平台 <span aria-hidden="true">↗</span></a>
+          <a class="personal-secondary-action" href="#site-notes">查看学习记录</a>
+        </div>
+        <div class="personal-location"><span class="status-dot" aria-hidden="true"></span><span data-profile-location>浙江 · 杭电考试范围</span><span class="location-divider">/</span><span>持续更新中</span></div>
+      </div>
+      <div class="personal-hero-aside">
+        <div class="hero-preview-label"><span>NOW WORKING ON</span><span>01 / 04</span></div>
+        <div class="hero-preview-window">
+          <div class="preview-window-bar"><span></span><span></span><span></span><b>control-lab / root locus</b></div>
+          <img src="calculator-root-locus-desktop.png" alt="自动控制根轨迹计算工具预览" loading="eager">
+        </div>
+        <p>从根轨迹分离点，到频域和状态空间，把难算的步骤交给工具，把时间留给理解。</p>
+      </div>
+    </section>
+
+    <section class="personal-intro-band" aria-label="本站概览">
+      <div class="personal-intro-label"><span>一处入口</span><span>多个工作台</span></div>
+      <div class="personal-intro-text">这里是我的自动控制学习站。它既是公式计算器，也是知识树、题库和错题复盘的长期记录。</div>
+      <a class="text-link" href="#about-site">了解本站 <span aria-hidden="true">→</span></a>
+    </section>
+
+    <section class="personal-section personal-tools-section" aria-labelledby="personal-tools-title">
+      <div class="personal-section-heading">
+        <div><p class="personal-section-kicker">THE WORKBENCH</p><h2 id="personal-tools-title">今天从哪里开始</h2></div>
+        <p>按大纲拆开的四个入口，点击即可进入对应工具。</p>
+      </div>
+      <div class="personal-tool-grid">
+        <button class="personal-tool-card card-featured" type="button" data-home-tool="root-locus">
+          <span class="tool-card-index">01 / CALCULATOR</span><span class="tool-card-icon" aria-hidden="true">↗</span>
+          <strong>根轨迹计算器</strong><span>分离点、渐近线、出射角与复数极点，一次完成。</span><em>打开工具 <b>→</b></em>
+        </button>
+        <button class="personal-tool-card" type="button" data-home-tool="knowledge-tree">
+          <span class="tool-card-index">02 / KNOWLEDGE</span><span class="tool-card-icon" aria-hidden="true">⌁</span>
+          <strong>知识树学习</strong><span>37 个知识点，配套公式、例题、易错点和学习进度。</span><em>继续学习 <b>→</b></em>
+        </button>
+        <button class="personal-tool-card" type="button" data-home-tool="question-bank">
+          <span class="tool-card-index">03 / PRACTICE</span><span class="tool-card-icon" aria-hidden="true">✦</span>
+          <strong>题库与错题本</strong><span>标准题库、AI 出题、错因记录和掌握度分析都在这里。</span><em>开始练习 <b>→</b></em>
+        </button>
+        <button class="personal-tool-card" type="button" data-home-tool="frequency">
+          <span class="tool-card-index">04 / RESPONSE</span><span class="tool-card-icon" aria-hidden="true">◌</span>
+          <strong>频域与动态响应</strong><span>Bode、Nyquist、时域指标和稳定裕度，统一查看。</span><em>查看分析 <b>→</b></em>
+        </button>
+      </div>
+    </section>
+
+    <section class="personal-section personal-notes-section" id="site-notes" aria-labelledby="site-notes-title">
+      <div class="personal-section-heading">
+        <div><p class="personal-section-kicker">LEARNING LOG</p><h2 id="site-notes-title">学习记录</h2></div>
+        <p>把每次计算、练习和复盘留下来，下一次从上一次继续。</p>
+      </div>
+      <div class="personal-notes-grid">
+        <article class="personal-note-card"><span>01 · ROOT LOCUS</span><h3>分离点不再靠通分</h3><p>输入传递函数后，工具会列出候选点并筛选 K &gt; 0 的有效区间，同时显示推导步骤。</p><a href="#learning-platform" data-home-action="platform">进入平台 →</a></article>
+        <article class="personal-note-card"><span>02 · REVIEW</span><h3>把错题变成下一轮计划</h3><p>错题本会记录错因、复习状态和知识点掌握程度，适合考前按薄弱项集中回看。</p><a href="#learning-platform" data-home-tool="question-bank">打开题库 →</a></article>
+        <article class="personal-note-card note-stats-card"><span>03 · CURRENT INDEX</span><div class="personal-stat-list"><div><strong data-stat="syllabus">37</strong><span>大纲知识点</span></div><div><strong data-stat="questions">60</strong><span>内置题目</span></div><div><strong data-stat="tree">37</strong><span>知识树节点</span></div></div><p>数据保存在浏览器本地，适合个人长期使用。</p></article>
+      </div>
+    </section>
+
+    <section class="personal-about-section" id="about-site" aria-labelledby="about-site-title">
+      <div class="about-profile-block"><span class="about-avatar" data-profile-avatar aria-hidden="true">控</span><div><p class="personal-section-kicker">ABOUT THIS SITE</p><h2 id="about-site-title" data-profile-name>自动控制学习空间</h2><p data-profile-bio>把公式、推导、题目和复盘放在一个安静的工作台里，面向 828 / 861 大纲持续整理。</p></div></div>
+      <div class="about-links-block"><span>LINKS</span><div data-profile-links><a href="#about-site">项目说明</a><a href="PERSONAL-SITE.md">部署指南</a></div></div>
+    </section>
+  </div>
+
+  <header id="learning-platform" class="app-header platform-header">
+    <div class="brand-block">
+      <p class="eyebrow">2026 考研 · 自动控制原理</p>
+      <h1>自动控制原理考研计算平台</h1>
+      <p class="header-subtitle">浙江工大 828 / 杭电 861 大纲驱动</p>
+    </div>
+    <div class="header-actions">
+      <label class="profile-field">
+        <span>考试范围</span>
+        <select id="school-profile">
+          <option value="all">828 + 861 全部</option>
+          <option value="828">浙江工大 828</option>
+          <option value="861">杭电 861</option>
+        </select>
+      </label>
+      <div class="formula-badge" aria-label="统一计算模型">
+        <span>输入模型</span>
+        <span aria-hidden="true">→</span>
+        <span>推导</span>
+        <span aria-hidden="true">→</span>
+        <span>答案</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="platform-layout">
+    <aside class="module-sidebar" aria-label="计算模块">
+      <div class="sidebar-section-label">当前可用</div>
+      <nav class="module-nav" id="module-nav">
+        <button type="button" class="module-link active" data-tool="overview" data-schools="828,861">
+          <span class="module-number">00</span>
+          <span><strong>大纲覆盖</strong><small>双校知识矩阵</small></span>
+        </button>
+        <button type="button" class="module-link" data-tool="routh" data-schools="828,861">
+          <span class="module-number">01</span>
+          <span><strong>劳斯判据</strong><small>稳定性与右半平面根</small></span>
+        </button>
+        <button type="button" class="module-link" data-tool="steady-error" data-schools="828,861">
+          <span class="module-number">02</span>
+          <span><strong>稳态误差</strong><small>型别与误差系数</small></span>
+        </button>
+        <button type="button" class="module-link" data-tool="second-order" data-schools="828,861">
+          <span class="module-number">03</span>
+          <span><strong>时域响应</strong><small>一阶、二阶与高阶近似</small></span>
+        </button>
+        <button type="button" class="module-link" data-tool="root-locus" data-schools="861">
+          <span class="module-number">04</span>
+          <span><strong>完整根轨迹</strong><small>曲线、渐近线与特殊点</small></span>
+        </button>
+        <button type="button" class="module-link" data-tool="frequency" data-schools="828,861">
+          <span class="module-number">05</span>
+          <span><strong>Bode与裕度</strong><small>频率响应和交叉频率</small></span>
+        </button>
+      </nav>
+      <div class="sidebar-source">
+        <span>大纲来源</span>
+        <p>浙江工大 828（2026）</p>
+        <p>杭州电子科大 861（2026）</p>
+      </div>
+    </aside>
+
+    <main class="platform-main">
+      <section class="tool-view overview-view active" id="tool-overview" data-schools="828,861">
+        <div class="tool-titlebar">
+          <div>
+            <p class="section-index">SYLLABUS</p>
+            <h2>大纲覆盖矩阵</h2>
+            <p>每条内容来自两校 2026 考试大纲，可直接进入计算工具或理论自测。</p>
+          </div>
+          <span class="school-badge" id="active-profile-badge">828 + 861</span>
+        </div>
+
+        <div class="coverage-stats" id="coverage-stats"></div>
+
+        <div class="coverage-toolbar">
+          <label>
+            <span>搜索知识点</span>
+            <input id="coverage-search" type="search" placeholder="例如：劳斯、状态空间、Z变换">
+          </label>
+          <label>
+            <span>覆盖方式</span>
+            <select id="coverage-status-filter">
+              <option value="all">全部状态</option>
+              <option value="available">计算工具</option>
+              <option value="theory">理论自测</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="coverage-table-wrap">
+          <table class="coverage-table">
+            <thead>
+              <tr><th>章节</th><th>大纲知识点</th><th>学校</th><th>题型</th><th>入口</th></tr>
+            </thead>
+            <tbody id="coverage-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="tool-view" id="tool-routh" data-schools="828,861" hidden>
+        <div class="tool-titlebar">
+          <div><p class="section-index">01 · STABILITY</p><h2>劳斯稳定判据</h2><p>输入闭环特征多项式，自动构造劳斯表并处理特殊行。</p></div>
+          <div class="school-tags"><span>828</span><span>861</span></div>
+        </div>
+        <div class="tool-workspace">
+          <section class="calculator-input-area">
+            <label class="field">
+              <span class="field-label">特征多项式 D(s)</span>
+              <input id="routh-polynomial" type="text" value="s^4+2s^3+3s^2+4s+5" autocomplete="off" spellcheck="false">
+              <span class="field-meta">支持因式、括号和幂，例如 (s+1)(s+2)(s+3)</span>
+            </label>
+            <label class="example-field wide-example">
+              <span>例题</span>
+              <select id="routh-example">
+                <option value="s^4+2s^3+3s^2+4s+5">含右半平面根</option>
+                <option value="(s+1)(s+2)(s+3)">稳定三阶系统</option>
+                <option value="s^4+2s^2+1">全零行特殊情况</option>
+                <option value="s^3+2s+1">首列为零特殊情况</option>
+              </select>
+            </label>
+            <div id="routh-error" class="error-message" role="alert" hidden></div>
+            <button id="routh-calculate" class="primary-button" type="button"><span>生成劳斯表</span><span aria-hidden="true">→</span></button>
+            <div class="method-strip"><span>判据</span><div><p>首列符号变化次数 = 右半平面根数</p><p>首列同号且无虚轴根时系统稳定</p></div></div>
+          </section>
+          <section class="calculator-output-area" id="routh-result" aria-live="polite"></section>
+        </div>
+      </section>
+
+      <section class="tool-view" id="tool-steady-error" data-schools="828,861" hidden>
+        <div class="tool-titlebar">
+          <div><p class="section-index">03 · STEADY STATE</p><h2>稳态误差计算器</h2><p>计算给定输入误差，或按G1、G2、H结构计算扰动引起的终值误差。</p></div>
+          <div class="school-tags"><span>828</span><span>861</span></div>
+        </div>
+        <div class="tool-workspace">
+          <section class="calculator-input-area">
+            <div class="compact-transfer-input">
+              <span>G(s)H(s) =</span>
+              <div>
+                <label><span>N(s)</span><input id="error-numerator" type="text" value="10"></label>
+                <span class="fraction-rule"></span>
+                <label><span>D(s)</span><input id="error-denominator" type="text" value="s(s+2)"></label>
+              </div>
+            </div>
+            <div class="two-field-grid">
+              <label class="field"><span class="field-label">输入信号</span><select id="error-input-type"><option value="0">A · 1(t) 阶跃</option><option value="1" selected>A · t 斜坡</option><option value="2">A · t²/2 抛物线</option></select></label>
+              <label class="field"><span class="field-label">幅值 A</span><input id="error-amplitude" type="number" value="1" step="0.1"></label>
+            </div>
+            <div id="steady-error-message" class="error-message" role="alert" hidden></div>
+            <button id="steady-error-calculate" class="primary-button" type="button"><span>计算稳态误差</span><span aria-hidden="true">→</span></button>
+            <div class="method-strip"><span>定义</span><div><p>Kp = lim G(s)H(s)</p><p>Kv = lim sG(s)H(s)，Ka = lim s²G(s)H(s)</p></div></div>
+          </section>
+          <section class="calculator-output-area" id="steady-error-result" aria-live="polite"></section>
+        </div>
+      </section>
+
+      <section class="tool-view" id="tool-second-order" data-schools="828,861" hidden>
+        <div class="tool-titlebar">
+          <div><p class="section-index">04 · TIME RESPONSE</p><h2>时域动态性能计算器</h2><p>覆盖典型一阶、典型二阶和高阶系统主导极点近似。</p></div>
+          <div class="school-tags"><span>828</span><span>861</span></div>
+        </div>
+        <div class="tool-workspace">
+          <section class="calculator-input-area">
+            <div class="two-field-grid">
+              <label class="field"><span class="field-label">阻尼比 ζ</span><input id="second-zeta" type="number" value="0.5" min="0" step="0.05"></label>
+              <label class="field"><span class="field-label">自然频率 ωn</span><input id="second-wn" type="number" value="4" min="0.001" step="0.1"><span class="field-meta">rad/s</span></label>
+            </div>
+            <label class="range-field"><span>阻尼比快速调节</span><input id="second-zeta-range" type="range" min="0" max="2" step="0.01" value="0.5"></label>
+            <div id="second-order-error" class="error-message" role="alert" hidden></div>
+            <button id="second-order-calculate" class="primary-button" type="button"><span>计算动态指标</span><span aria-hidden="true">→</span></button>
+            <div class="method-strip"><span>指标</span><div><p>σ% · tp · tr · ts(2%) · ts(5%)</p><p>同时给出闭环极点和单位阶跃响应</p></div></div>
+          </section>
+          <section class="calculator-output-area" id="second-order-result" aria-live="polite"></section>
+        </div>
+      </section>
+
+      <section class="tool-view" id="tool-frequency" data-schools="828,861" hidden>
+        <div class="tool-titlebar">
+          <div><p class="section-index">05 · FREQUENCY RESPONSE</p><h2>Bode图与稳定裕度</h2><p>自动选择频率范围，计算增益/相位交叉频率、相角裕度和幅值裕度。</p></div>
+          <div class="school-tags"><span>828</span><span>861</span></div>
+        </div>
+        <div class="tool-workspace">
+          <section class="calculator-input-area">
+            <div class="compact-transfer-input">
+              <span>G(s)H(s) =</span>
+              <div>
+                <label><span>N(s)</span><input id="frequency-numerator" type="text" value="1"></label>
+                <span class="fraction-rule"></span>
+                <label><span>D(s)</span><input id="frequency-denominator" type="text" value="s(s+1)"></label>
+              </div>
+            </div>
+            <label class="example-field wide-example">
+              <span>例题</span>
+              <select id="frequency-example">
+                <option value="integrator-first">积分加惯性环节</option>
+                <option value="third-order">三阶系统</option>
+                <option value="with-zero">含一个实零点</option>
+              </select>
+            </label>
+            <div class="two-field-grid">
+              <label class="field"><span class="field-label">ωmin <em>留空自动</em></span><input id="frequency-min" type="number" min="0.000001" step="0.01" placeholder="自动"></label>
+              <label class="field"><span class="field-label">ωmax <em>留空自动</em></span><input id="frequency-max" type="number" min="0.000001" step="1" placeholder="自动"></label>
+            </div>
+            <div id="frequency-error" class="error-message" role="alert" hidden></div>
+            <button id="frequency-calculate" class="primary-button" type="button"><span>计算Bode图与裕度</span><span aria-hidden="true">→</span></button>
+            <div class="method-strip"><span>判据</span><div><p>|G(jωc)| = 1，γ = 180° + ∠G(jωc)</p><p>∠G(jωg) = −180°，h = −L(ωg)</p></div></div>
+          </section>
+          <section class="calculator-output-area" id="frequency-result" aria-live="polite"></section>
+        </div>
+      </section>
+
+      <section class="tool-view" id="tool-root-locus" data-schools="861" hidden>
+        <div class="tool-titlebar">
+          <div><p class="section-index">04 · ROOT LOCUS</p><h2>完整根轨迹分析</h2><p>绘制闭环根随 K 的变化，并计算渐近线、重心、出射角、分离点与汇合点。</p></div>
+          <div class="school-tags"><span>861 重点</span></div>
+        </div>
+
+  <div class="workspace">
+    <section class="input-pane" aria-labelledby="input-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-index">01</p>
+          <h2 id="input-title">输入传递函数</h2>
+        </div>
+        <label class="example-field">
+          <span>例题</span>
+          <select id="example-select">
+            <option value="three-poles">三极点系统</option>
+            <option value="two-poles-one-zero">含一个零点</option>
+            <option value="four-poles">四极点系统</option>
+            <option value="complex-poles">含共轭复极点</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="segmented" role="tablist" aria-label="输入方式">
+        <button class="segment active" id="tab-formula" type="button" role="tab" aria-selected="true" aria-controls="formula-panel">公式键盘</button>
+        <button class="segment" id="tab-roots" type="button" role="tab" aria-selected="false" aria-controls="roots-panel">零点 / 极点</button>
+        <button class="segment" id="tab-coefficients" type="button" role="tab" aria-selected="false" aria-controls="coefficients-panel">多项式系数</button>
+      </div>
+
+      <div id="formula-panel" class="input-panel formula-panel" role="tabpanel" aria-labelledby="tab-formula">
+        <div class="formula-editor" aria-label="传递函数公式输入">
+          <span class="formula-prefix">G(s)H(s) = K ×</span>
+          <div class="expression-fraction">
+            <label class="expression-field active" id="formula-numerator-field">
+              <span>N(s)</span>
+              <input id="formula-numerator-input" class="formula-expression" type="text" value="1" autocomplete="off" spellcheck="false" aria-label="分子公式">
+            </label>
+            <span class="fraction-rule" aria-hidden="true"></span>
+            <label class="expression-field" id="formula-denominator-field">
+              <span>D(s)</span>
+              <input id="formula-denominator-input" class="formula-expression" type="text" value="s(s+2)(s+4)" autocomplete="off" spellcheck="false" aria-label="分母公式">
+            </label>
+          </div>
+        </div>
+
+        <div class="keypad-status">
+          <span id="active-formula-label">正在输入：分子 N(s)</span>
+          <span>支持因式、幂与复数</span>
+        </div>
+
+        <div id="formula-keypad" class="calculator-keypad" aria-label="公式计算器键盘">
+          <button type="button" class="key key-command" data-action="clear" title="清空当前输入">C</button>
+          <button type="button" class="key key-operator" data-value="(">(</button>
+          <button type="button" class="key key-operator" data-value=")">)</button>
+          <button type="button" class="key key-operator" data-value="^">x<sup>n</sup></button>
+          <button type="button" class="key key-command" data-action="backspace" title="退格" aria-label="退格">⌫</button>
+
+          <button type="button" class="key" data-value="7">7</button>
+          <button type="button" class="key" data-value="8">8</button>
+          <button type="button" class="key" data-value="9">9</button>
+          <button type="button" class="key key-variable" data-value="s">s</button>
+          <button type="button" class="key key-operator" data-value="×">×</button>
+
+          <button type="button" class="key" data-value="4">4</button>
+          <button type="button" class="key" data-value="5">5</button>
+          <button type="button" class="key" data-value="6">6</button>
+          <button type="button" class="key" data-value=".">.</button>
+          <button type="button" class="key key-operator" data-value="÷">÷</button>
+
+          <button type="button" class="key" data-value="1">1</button>
+          <button type="button" class="key" data-value="2">2</button>
+          <button type="button" class="key" data-value="3">3</button>
+          <button type="button" class="key key-operator" data-value="+">+</button>
+          <button type="button" class="key key-operator" data-value="−">−</button>
+
+          <button type="button" class="key key-zero" data-value="0">0</button>
+          <button type="button" class="key key-variable" data-value="j">j</button>
+          <button type="button" class="key key-variable" data-value="s^2">s²</button>
+          <button type="button" class="key key-equals" data-action="calculate">=</button>
+        </div>
+      </div>
+
+      <div id="roots-panel" class="input-panel" role="tabpanel" aria-labelledby="tab-roots" hidden>
+        <label class="field">
+          <span class="field-label">极点 <strong>必填</strong></span>
+          <input id="poles-input" type="text" value="0, -2, -4" autocomplete="off" spellcheck="false" placeholder="例如：0, -1+2j, -1-2j">
+          <span class="field-meta">复数使用 j，共轭项用逗号分隔</span>
+        </label>
+        <label class="field">
+          <span class="field-label">零点 <em>可留空</em></span>
+          <input id="zeros-input" type="text" value="" autocomplete="off" spellcheck="false" placeholder="例如：-2+1j, -2-1j">
+          <span class="field-meta">实数与共轭复数可以同时输入</span>
+        </label>
+      </div>
+
+      <div id="coefficients-panel" class="input-panel" role="tabpanel" aria-labelledby="tab-coefficients" hidden>
+        <label class="field">
+          <span class="field-label">分母 D(s) 系数 <strong>必填</strong></span>
+          <input id="denominator-input" type="text" value="1, 6, 8, 0" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="例如：1, 6, 8, 0">
+          <span class="field-meta">按 s 的降幂排列</span>
+        </label>
+        <label class="field">
+          <span class="field-label">分子 N(s) 系数 <em>可留空，默认为 1</em></span>
+          <input id="numerator-input" type="text" value="1" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="例如：1, 1">
+          <span class="field-meta">按 s 的降幂排列</span>
+        </label>
+      </div>
+
+      <label class="root-gain-field">
+        <span>绘图最大增益 K<sub>max</sub></span>
+        <input id="root-max-gain" type="number" value="1000" min="0.001" step="10">
+      </label>
+
+      <div id="input-error" class="error-message" role="alert" hidden></div>
+
+      <button id="calculate-button" class="primary-button" type="button">
+        <span>计算并绘制根轨迹</span>
+        <span aria-hidden="true">→</span>
+      </button>
+
+      <div class="method-strip">
+        <span>判据</span>
+        <div>
+          <p>K(s) = -D(s) / N(s)</p>
+          <p>dK / ds = 0，且 K &gt; 0</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="result-pane" aria-labelledby="result-title">
+      <div class="section-heading result-heading">
+        <div>
+          <p class="section-index">02</p>
+          <h2 id="result-title">计算结果</h2>
+        </div>
+        <span id="result-count" class="result-count">等待计算</span>
+      </div>
+
+      <div id="result-content" aria-live="polite"></div>
+    </section>
+  </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <span>依据浙江工大 828、杭电 861 2026 考试大纲构建</span>
+    <span>核心计算离线 · AI题库可选联网 · 结果保留 6 位有效数字</span>
+  </footer>
+
+  <script src="solver.js"></script>
+  <script src="control-core.js"></script>
+  <script src="advanced-core.js"></script>
+  <script src="syllabus-data.js"></script>
+  <script src="theory-data.js"></script>
+  <script src="question-bank-data.js"></script>
+  <script src="knowledge-tree-data.js"></script>
+  <script src="vendor/katex/node_modules/katex/dist/katex.min.js"></script>
+  <script src="vendor/katex/node_modules/katex/dist/contrib/auto-render.min.js"></script>
+  <script src="app.js"></script>
+  <script src="platform.js"></script>
+  <script src="advanced-platform.js"></script>
+  <script src="ai-question-bank.js"></script>
+  <script src="knowledge-tree.js"></script>
+  <script src="site-profile.js"></script>
+  <script src="personal-home.js"></script>
+</body>
+</html>

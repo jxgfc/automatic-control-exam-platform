@@ -1,0 +1,5 @@
+# Replace this domain with your own domain, for example study.example.com.
+study.example.com {
+  encode gzip
+  reverse_proxy app:4173
+}

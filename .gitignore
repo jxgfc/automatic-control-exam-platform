@@ -1,0 +1,21 @@
+node_modules/
+!vendor/
+!vendor/katex/
+!vendor/katex/node_modules/
+!vendor/katex/node_modules/katex/
+!vendor/katex/node_modules/katex/dist/
+!vendor/katex/node_modules/katex/dist/**
+!vendor/katex/node_modules/katex/package.json
+!vendor/katex/node_modules/commander/
+!vendor/katex/node_modules/commander/**
+.env
+.env.*
+*.log
+
+# 本地测试输出与系统临时文件
+playwright-report/
+test-results/
+*.tmp
+
+# Windows 命令误生成的保留名称文件
+/nul
