@@ -185,8 +185,22 @@ function createMemoryStore() {
         return record;
       });
     },
-    async listActivationCodes(limit) {
-      return [...activationCodes.values()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, limit);
+    async listActivationCodes(options) {
+      const settings = typeof options === "object" && options !== null ? options : { limit: options };
+      const limit = Math.max(1, Math.min(500, Number(settings.limit) || 100));
+      const offset = Math.max(0, Number(settings.offset) || 0);
+      const search = String(settings.search || "").trim().toLocaleLowerCase("en-US");
+      const status = ["available", "used", "expired"].includes(settings.status) ? settings.status : "all";
+      const now = Date.now();
+      const matches = [...activationCodes.values()].filter((code) => {
+        if (search && !(String(code.codeHint || "").toLocaleLowerCase("en-US").includes(search) || String(code.label || "").toLocaleLowerCase("en-US").includes(search))) return false;
+        const expired = !code.usedAt && code.expiresAt && new Date(code.expiresAt).getTime() <= now;
+        if (status === "used") return Boolean(code.usedAt);
+        if (status === "expired") return Boolean(expired);
+        if (status === "available") return !code.usedAt && !expired;
+        return true;
+      }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return { items: matches.slice(offset, offset + limit), total: matches.length, limit, offset };
     },
     async activationCodeStats() {
       const now = Date.now();
@@ -240,6 +254,9 @@ function createMemoryStore() {
     async countUsers(options) {
       const search = String(options && options.search || "").trim().toLocaleLowerCase("en-US");
       return [...users.values()].filter((user) => !search || user.username.toLocaleLowerCase("en-US").includes(search)).length;
+    },
+    async userExists(userId) {
+      return [...users.values()].some((user) => String(user.id) === String(userId));
     },
     async listUsers(options) {
       const settings = options || {};
@@ -355,12 +372,29 @@ function createPostgresStore(databaseUrl) {
       } catch (error) { await client.query("ROLLBACK"); throw error; }
       finally { client.release(); }
     },
-    async listActivationCodes(limit) {
+    async listActivationCodes(options) {
+      const settings = options || {};
+      const limit = Math.max(1, Math.min(500, Number(settings.limit) || 100));
+      const offset = Math.max(0, Number(settings.offset) || 0);
+      const values = [];
+      const where = [];
+      const search = String(settings.search || "").trim();
+      if (search) {
+        values.push("%" + search.replace(/[\\%_]/g, "\\$&") + "%");
+        where.push("(code_hint ILIKE $" + values.length + " ESCAPE '\\' OR label ILIKE $" + values.length + " ESCAPE '\\')");
+      }
+      const status = ["available", "used", "expired"].includes(settings.status) ? settings.status : "all";
+      if (status === "used") where.push("used_at IS NOT NULL");
+      if (status === "expired") where.push("used_at IS NULL AND expires_at IS NOT NULL AND expires_at <= NOW()");
+      if (status === "available") where.push("used_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())");
+      const condition = where.length ? " WHERE " + where.join(" AND ") : "";
+      const countResult = await pool.query("SELECT COUNT(*)::int AS total FROM activation_codes" + condition, values);
+      const pageValues = values.concat([limit, offset]);
       const result = await pool.query(
-        "SELECT id, code_hint AS \"codeHint\", label, created_at AS \"createdAt\", expires_at AS \"expiresAt\", used_at AS \"usedAt\", used_by AS \"usedBy\" FROM activation_codes ORDER BY created_at DESC LIMIT $1",
-        [limit]
+        "SELECT id, code_hint AS \"codeHint\", label, created_at AS \"createdAt\", expires_at AS \"expiresAt\", used_at AS \"usedAt\", used_by AS \"usedBy\" FROM activation_codes" + condition + " ORDER BY created_at DESC LIMIT $" + (pageValues.length - 1) + " OFFSET $" + pageValues.length,
+        pageValues
       );
-      return result.rows;
+      return { items: result.rows, total: Number(countResult.rows[0].total) || 0, limit, offset };
     },
     async activationCodeStats() {
       const result = await pool.query("SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE used_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()))::int AS available, COUNT(*) FILTER (WHERE used_at IS NOT NULL)::int AS used, COUNT(*) FILTER (WHERE used_at IS NULL AND expires_at IS NOT NULL AND expires_at <= NOW())::int AS expired FROM activation_codes");
@@ -399,6 +433,10 @@ function createPostgresStore(databaseUrl) {
       }
       const result = await pool.query("SELECT COUNT(*)::int AS total FROM app_users" + where, values);
       return result.rows[0].total;
+    },
+    async userExists(userId) {
+      const result = await pool.query("SELECT 1 FROM app_users WHERE id = $1 LIMIT 1", [userId]);
+      return result.rowCount > 0;
     },
     async listUsers(options) {
       const settings = options || {};
@@ -495,9 +533,16 @@ function createAuthService(options) {
     return records.map((record, index) => publicActivation(record, entries[index].code));
   }
 
-  async function listActivationCodes(limit) {
+  async function listActivationCodes(options) {
     await ensureReady();
-    return (await store.listActivationCodes(Math.max(1, Math.min(500, Number(limit) || 100)))).map((record) => publicActivation(record));
+    const settings = typeof options === "object" && options !== null ? options : { limit: options };
+    const result = await store.listActivationCodes({
+      search: String(settings.search || "").trim().slice(0, 100),
+      status: String(settings.status || "all"),
+      limit: Math.max(1, Math.min(500, Number(settings.limit) || 100)),
+      offset: Math.max(0, Number(settings.offset) || 0)
+    });
+    return { ...result, items: result.items.map((record) => publicActivation(record)) };
   }
 
   async function activationCodeStats() {
@@ -530,6 +575,13 @@ function createAuthService(options) {
     const normalizedId = String(userId || "").trim();
     if (!/^\d+$/.test(normalizedId)) throw new AuthError("用户编号无效", 400, "INVALID_USER_ID");
     return store.revokeUserSessions(normalizedId);
+  }
+
+  async function userExists(userId) {
+    await ensureReady();
+    const normalizedId = String(userId || "").trim();
+    if (!/^\d+$/.test(normalizedId)) return false;
+    return store.userExists(normalizedId);
   }
 
   async function login(usernameInput, passwordInput) {
@@ -574,6 +626,7 @@ function createAuthService(options) {
     countUsers,
     listUsers,
     revokeUserSessions,
+    userExists,
     login,
     createSession,
     userFromToken,

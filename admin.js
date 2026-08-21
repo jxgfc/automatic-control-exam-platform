@@ -3,8 +3,11 @@
   const $ = (selector) => document.querySelector(selector);
   const message = $("#message");
   const userPageSize = 20;
+  const codePageSize = 20;
   let userOffset = 0;
   let userTotal = 0;
+  let codeOffset = 0;
+  let codeTotal = 0;
   let refreshSequence = 0;
   const escapeHtml = (value) => String(value == null ? "" : value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
   const date = (value) => {
@@ -32,6 +35,11 @@
       const batchLabel = formatLabel(code.label);
       return "<tr><td>" + escapeHtml(code.id) + "</td><td><code>" + escapeHtml(code.codeHint) + "</code></td><td class=\"label-cell\" title=\"" + escapeHtml(batchLabel) + "\">" + escapeHtml(batchLabel) + "</td><td><span class=\"status status-" + statusClass + "\">" + status + "</span></td><td>" + date(code.expiresAt) + "</td><td>" + action + "</td></tr>";
     }).join("") || '<tr><td colspan="6" class="empty">暂无激活码</td></tr>';
+    const pages = codeTotal ? Math.ceil(codeTotal / codePageSize) : 0;
+    const page = codeTotal ? Math.floor(codeOffset / codePageSize) + 1 : 0;
+    $("#code-page-status").textContent = pages ? "第 " + page + " / " + pages + " 页" : "暂无激活码";
+    $("#code-prev").disabled = codeOffset <= 0;
+    $("#code-next").disabled = codeOffset + codePageSize >= codeTotal;
   }
   function renderUsers(users) {
     $("#user-result-count").textContent = userTotal + " 条结果";
@@ -56,9 +64,13 @@
       if (settings.resetPage) userOffset = 0;
       const userQuery = new URLSearchParams({ limit: String(userPageSize), offset: String(userOffset) });
       if (userSearch) userQuery.set("search", userSearch);
-      const [stats, codes, users] = await Promise.all([request("/api/admin/stats"), request("/api/admin/activation-codes?limit=500"), request("/api/admin/users?" + userQuery.toString())]);
+      const codeQuery = new URLSearchParams({ limit: String(codePageSize), offset: String(codeOffset), status: $("#code-status").value });
+      const codeSearch = $("#code-search").value.trim();
+      if (codeSearch) codeQuery.set("search", codeSearch);
+      const [stats, codes, users] = await Promise.all([request("/api/admin/stats"), request("/api/admin/activation-codes?" + codeQuery.toString()), request("/api/admin/users?" + userQuery.toString())]);
       if (sequence !== refreshSequence) return;
       userTotal = Number(users.total) || 0;
+      codeTotal = Number(codes.total) || 0;
       $("#user-total").textContent = stats.users.total;
       $("#question-total").textContent = stats.questionBank.total;
       $("#code-available").textContent = stats.activationCodes.available;
@@ -113,6 +125,11 @@
     catch (error) { setMessage(error instanceof Error ? error.message : "激活码撤销失败"); }
   });
   $("#refresh").addEventListener("click", refresh);
+  $("#code-search-button").addEventListener("click", () => { codeOffset = 0; refresh(); });
+  $("#code-clear-button").addEventListener("click", () => { $("#code-search").value = ""; $("#code-status").value = "all"; codeOffset = 0; refresh(); });
+  $("#code-status").addEventListener("change", () => { codeOffset = 0; refresh(); });
+  $("#code-prev").addEventListener("click", () => { codeOffset = Math.max(0, codeOffset - codePageSize); refresh(); });
+  $("#code-next").addEventListener("click", () => { if (codeOffset + codePageSize < codeTotal) { codeOffset += codePageSize; refresh(); } });
   $("#user-search-button").addEventListener("click", () => refresh({ resetPage: true }));
   $("#user-clear-button").addEventListener("click", () => { $("#user-search").value = ""; refresh({ userSearch: "", resetPage: true }); });
   $("#user-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); refresh({ resetPage: true }); } });

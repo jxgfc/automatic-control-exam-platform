@@ -32,9 +32,39 @@ function sendJson(response, status, value) {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
-    "Cache-Control": "no-store"
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Frame-Options": "DENY",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
   });
   response.end(body);
+}
+
+function createRateLimiter(options) {
+  const settings = options || {};
+  const limit = Math.max(1, Number(settings.limit) || 10);
+  const windowMs = Math.max(1000, Number(settings.windowMs) || 60000);
+  const entries = new Map();
+  return (key) => {
+    const now = Date.now();
+    const normalizedKey = String(key || "unknown").slice(0, 160);
+    const current = entries.get(normalizedKey);
+    if (!current || current.resetAt <= now) {
+      entries.set(normalizedKey, { count: 1, resetAt: now + windowMs });
+      if (entries.size > 10000) {
+        for (const [entryKey, entry] of entries) if (entry.resetAt <= now) entries.delete(entryKey);
+      }
+      return { allowed: true, retryAfter: 0 };
+    }
+    current.count += 1;
+    return { allowed: current.count <= limit, retryAfter: Math.max(1, Math.ceil((current.resetAt - now) / 1000)) };
+  };
+}
+
+function clientRateLimitKey(request) {
+  const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || request.socket.remoteAddress || "unknown";
 }
 
 function requestHeaderToken(request) {
@@ -527,6 +557,9 @@ function serveStatic(request, response, pathname) {
       "Content-Type": MIME_TYPES[path.extname(filePath).toLowerCase()] || "application/octet-stream",
       "Content-Length": stats.size,
       "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "X-Frame-Options": "DENY",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
       "Cache-Control": "no-cache"
     });
     fs.createReadStream(filePath).pipe(response);
@@ -547,6 +580,9 @@ function createAppServer(options) {
   const adminUsername = String(settings.adminUsername || process.env.ADMIN_USERNAME || "").normalize("NFKC").trim().toLocaleLowerCase("en-US");
   const activationSetting = settings.requireActivation !== undefined ? settings.requireActivation : process.env.REQUIRE_ACTIVATION;
   const requireActivation = activationSetting === true || /^(1|true|yes)$/i.test(String(activationSetting || ""));
+  const loginLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
+  const registerLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
+  const aiLimiter = createRateLimiter({ limit: 8, windowMs: 10 * 60 * 1000 });
   const currentUser = async (request) => authService && authService.configured
     ? authService.userFromToken(auth.requestSessionToken(request))
     : null;
@@ -599,6 +635,12 @@ function createAppServer(options) {
           sendJson(response, 401, { error: "请先使用激活码注册并登录", code: "LOGIN_REQUIRED" });
           return;
         }
+        const aiRate = aiLimiter(clientRateLimitKey(request));
+        if (!aiRate.allowed) {
+          response.setHeader("Retry-After", String(aiRate.retryAfter));
+          sendJson(response, 429, { error: "AI出题请求过于频繁，请稍后再试。", code: "RATE_LIMITED", retryAfter: aiRate.retryAfter });
+          return;
+        }
         const body = await readJson(request);
         const questions = await requestAiQuestions(body, settings.fetch);
         void saveGeneratedQuestions(questions, body.criteria);
@@ -617,6 +659,12 @@ function createAppServer(options) {
     }
     if (request.method === "POST" && url.pathname === "/api/auth/register") {
       try {
+        const registerRate = registerLimiter(clientRateLimitKey(request));
+        if (!registerRate.allowed) {
+          response.setHeader("Retry-After", String(registerRate.retryAfter));
+          sendJson(response, 429, { error: "注册请求过于频繁，请稍后再试。", code: "RATE_LIMITED", retryAfter: registerRate.retryAfter });
+          return;
+        }
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
         const body = await readJson(request);
         const user = await authService.register(body.username, body.password, body.activationCode);
@@ -628,6 +676,12 @@ function createAppServer(options) {
     }
     if (request.method === "POST" && url.pathname === "/api/auth/login") {
       try {
+        const loginRate = loginLimiter(clientRateLimitKey(request));
+        if (!loginRate.allowed) {
+          response.setHeader("Retry-After", String(loginRate.retryAfter));
+          sendJson(response, 429, { error: "登录尝试过于频繁，请稍后再试。", code: "RATE_LIMITED", retryAfter: loginRate.retryAfter });
+          return;
+        }
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
         const body = await readJson(request);
         const user = await authService.login(body.username, body.password);
@@ -659,8 +713,15 @@ function createAppServer(options) {
       if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
-        const codes = await authService.listActivationCodes(url.searchParams.get("limit"));
-        sendJson(response, 200, { codes });
+        const limit = Math.max(1, Math.min(50, Number(url.searchParams.get("limit")) || 20));
+        const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+        const result = await authService.listActivationCodes({
+          search: url.searchParams.get("search") || "",
+          status: url.searchParams.get("status") || "all",
+          limit,
+          offset
+        });
+        sendJson(response, 200, { codes: result.items, total: result.total, limit: result.limit, offset: result.offset });
       } catch (error) { authFailure(response, error, "激活码查询失败"); }
       return;
     }
@@ -714,6 +775,10 @@ function createAppServer(options) {
         const user = await currentUser(request);
         if (user && String(user.id) === revokeUserSessionsMatch[1]) {
           sendJson(response, 409, { error: "不能在当前登录状态下撤销管理员自己的会话", code: "SELF_SESSION_REVOKE" });
+          return;
+        }
+        if (!(await authService.userExists(revokeUserSessionsMatch[1]))) {
+          sendJson(response, 404, { error: "用户不存在", code: "USER_NOT_FOUND" });
           return;
         }
         const revoked = await authService.revokeUserSessions(revokeUserSessionsMatch[1]);

@@ -32,7 +32,11 @@ const { createAppServer } = require("./server.js");
   assert.equal((await reused.json()).code, "ACTIVATION_CODE_USED");
   const listed = await fetch(base + "/api/admin/activation-codes", { headers: { Authorization: "Bearer admin-test-token" } }).then((response) => response.json());
   assert.equal(listed.codes.length, 2);
+  assert.equal(listed.total, 2);
   assert.equal(listed.codes.some((code) => code.code), false);
+  const filteredCodes = await fetch(base + "/api/admin/activation-codes?status=available&limit=1&offset=0", { headers: { Authorization: "Bearer admin-test-token" } }).then((response) => response.json());
+  assert.equal(filteredCodes.total, 1);
+  assert.equal(filteredCodes.codes.length, 1);
   const adminStats = await fetch(base + "/api/admin/stats", { headers: { Cookie: cookie } });
   assert.equal(adminStats.status, 200);
   const statsPayload = await adminStats.json();
@@ -70,6 +74,22 @@ const { createAppServer } = require("./server.js");
   const list = await fetch(base + "/api/question-bank?search=分离点").then((response) => response.json());
   assert.equal(list.total, 1);
   assert.equal(list.items[0].options[0], "A");
+  const missingUser = await fetch(base + "/api/admin/users/999/revoke-sessions", { method: "POST", headers: { Cookie: cookie } });
+  assert.equal(missingUser.status, 404);
+  assert.equal((await missingUser.json()).code, "USER_NOT_FOUND");
+  const health = await fetch(base + "/api/health");
+  assert.equal(health.headers.get("x-content-type-options"), "nosniff");
+  const limitedServer = createAppServer({ authUseMemory: true, questionBankUseMemory: true, requireActivation: false });
+  await new Promise((resolve) => limitedServer.listen(0, "127.0.0.1", resolve));
+  const limitedBase = `http://127.0.0.1:${limitedServer.address().port}`;
+  let rateLimited = null;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const response = await fetch(limitedBase + "/api/auth/login", { method: "POST", ...json({ username: "tester", password: "wrong-pass" }) });
+    if (response.status === 429) { rateLimited = response; break; }
+  }
+  assert.equal(rateLimited && rateLimited.status, 429);
+  assert.equal((await rateLimited.json()).code, "RATE_LIMITED");
+  await new Promise((resolve) => limitedServer.close(resolve));
 
   await new Promise((resolve) => server.close(resolve));
 
