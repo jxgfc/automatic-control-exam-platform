@@ -38,6 +38,15 @@ const { createAppServer } = require("./server.js");
   const statsPayload = await adminStats.json();
   assert.equal(statsPayload.users.total, 1);
   assert.equal(statsPayload.activationCodes.used, 1);
+  assert.equal(statsPayload.users.items[0].username, "tester");
+  assert.equal(statsPayload.users.items[0].activationCodeHint, generatedPayload.codes[0].codeHint);
+  assert.equal(statsPayload.users.items[0].activationLabel, "测试批次");
+  assert.equal(statsPayload.users.items[0].activeSessions, 1);
+  const searchedUsers = await fetch(base + "/api/admin/users?search=test&limit=10", { headers: { Cookie: cookie } });
+  assert.equal(searchedUsers.status, 200);
+  assert.equal((await searchedUsers.json()).users.length, 1);
+  const missingUsers = await fetch(base + "/api/admin/users?search=missing", { headers: { Cookie: cookie } });
+  assert.deepEqual((await missingUsers.json()).users, []);
 
   const unauthorized = await fetch(base + "/api/question-bank", { method: "POST", ...json({ question: "q", answer: "a", analysis: "x" }) });
   assert.equal(unauthorized.status, 401);

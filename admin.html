@@ -23,6 +23,7 @@
     .panel { padding: 20px; margin-top: 18px; overflow: hidden; }
     .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
     .panel-heading h2 { margin: 0; font-size: 19px; }
+    .panel-heading p { margin: 5px 0 0; color: #667176; font-size: 13px; }
     .form-row { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
     label { display: grid; gap: 6px; color: #667176; font-size: 13px; }
     input { min-width: 130px; border: 1px solid #c9ced0; border-radius: 3px; padding: 10px; font: inherit; }
@@ -38,6 +39,10 @@
     .status-used { color: #667176; background: #eef0f1; }
     .status-expired { color: #a33b32; background: #fbe9e6; }
     .empty { color: #667176; text-align: center; }
+    .user-search { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
+    .user-search label { flex: 1 1 260px; }
+    .user-search input { width: 100%; }
+    .user-count { color: #667176; font-size: 13px; }
     .generated-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; color: #667176; font-size: 13px; }
     .copy-status { color: #176b65; }
     pre { white-space: pre-wrap; word-break: break-word; background: #f4f2ed; padding: 12px; margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
@@ -52,7 +57,7 @@
     <section class="stats" aria-label="站点统计"><div class="stat"><strong id="user-total">--</strong><span>注册用户</span></div><div class="stat"><strong id="question-total">--</strong><span>云端 AI 题目</span></div><div class="stat"><strong id="code-available">--</strong><span>可用激活码</span></div><div class="stat"><strong id="code-used">--</strong><span>已使用激活码</span></div><div class="stat"><strong id="code-expired">--</strong><span>已过期激活码</span></div></section>
     <section class="panel"><div class="panel-heading"><h2>发放激活码</h2><button id="refresh" type="button">刷新数据</button></div><div class="form-row"><label>数量<input id="code-count" type="number" min="1" max="100" value="10"></label><label>有效天数<input id="code-days" type="number" min="0" max="3650" value="30"></label><label>批次标签<input id="code-label" maxlength="120" placeholder="例如 2026 秋季用户"></label><button class="primary" id="generate" type="button">生成激活码</button></div><div id="generated-wrap" hidden><div class="generated-toolbar"><span>本次生成的完整激活码</span><button id="copy-generated" type="button">复制全部</button><span class="copy-status" id="copy-status" role="status"></span></div><pre id="generated"></pre></div></section>
     <section class="panel"><div class="panel-heading"><h2>激活码状态</h2></div><div class="table-scroll"><table><thead><tr><th scope="col">ID</th><th scope="col">提示</th><th scope="col">批次</th><th scope="col">状态</th><th scope="col">过期时间</th><th scope="col">操作</th></tr></thead><tbody id="codes"></tbody></table></div></section>
-    <section class="panel"><div class="panel-heading"><h2>用户数据</h2></div><div class="table-scroll"><table><thead><tr><th scope="col">ID</th><th scope="col">账号</th><th scope="col">注册时间</th><th scope="col">激活码记录</th></tr></thead><tbody id="users"></tbody></table></div></section>
+    <section class="panel"><div class="panel-heading"><div><h2>用户管理</h2><p>仅显示账号运营信息，不显示密码或会话令牌。</p></div><span class="user-count" id="user-result-count"></span></div><div class="user-search"><label>搜索账号<input id="user-search" name="user-search" type="search" autocomplete="off" placeholder="输入用户名，留空显示全部"></label><button id="user-search-button" class="primary" type="button">搜索用户</button><button id="user-clear-button" type="button">清除</button></div><div class="table-scroll"><table><thead><tr><th scope="col">ID</th><th scope="col">账号</th><th scope="col">注册时间</th><th scope="col">激活码</th><th scope="col">批次</th><th scope="col">最近活跃</th><th scope="col">在线会话</th></tr></thead><tbody id="users"></tbody></table></div></section>
   </main>
   <script src="admin.js"></script>
 </body>

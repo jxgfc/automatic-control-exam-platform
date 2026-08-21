@@ -211,7 +211,8 @@ function createMemoryStore() {
       return user;
     },
     async createSession(userId, tokenHash, expiresAt) {
-      sessions.set(tokenHash, { userId: String(userId), expiresAt: Number(expiresAt) });
+      const now = new Date().toISOString();
+      sessions.set(tokenHash, { userId: String(userId), expiresAt: Number(expiresAt), createdAt: now, lastSeenAt: now });
     },
     async findUserBySession(tokenHash) {
       const session = sessions.get(tokenHash);
@@ -220,15 +221,38 @@ function createMemoryStore() {
         sessions.delete(tokenHash);
         return null;
       }
+      session.lastSeenAt = new Date().toISOString();
       for (const user of users.values()) {
         if (user.id === session.userId) return user;
       }
       return null;
     },
-    async listUsers(limit) {
-      return [...users.values()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, limit).map((user) => ({
-        id: String(user.id), username: user.username, createdAt: user.createdAt, activationCodeId: user.activationCodeId ? String(user.activationCodeId) : null
-      }));
+    async countUsers() {
+      return users.size;
+    },
+    async listUsers(options) {
+      const settings = options || {};
+      const search = String(settings.search || "").trim().toLocaleLowerCase("en-US");
+      const limit = Math.max(1, Number(settings.limit) || 100);
+      const items = [...users.values()]
+        .filter((user) => !search || user.username.toLocaleLowerCase("en-US").includes(search))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+        .slice(0, limit)
+        .map((user) => {
+          const activation = [...activationCodes.values()].find((item) => String(item.id) === String(user.activationCodeId));
+          const activeSessions = [...sessions.values()].filter((session) => session.userId === String(user.id) && session.expiresAt > Date.now());
+          return {
+            id: String(user.id),
+            username: user.username,
+            createdAt: user.createdAt,
+            activationCodeId: user.activationCodeId ? String(user.activationCodeId) : null,
+            activationCodeHint: activation ? activation.codeHint : null,
+            activationLabel: activation ? activation.label || "" : null,
+            lastSeenAt: activeSessions.map((session) => session.lastSeenAt).sort().at(-1) || null,
+            activeSessions: activeSessions.length
+          };
+        });
+      return items;
     },
     async deleteSession(tokenHash) {
       sessions.delete(tokenHash);
@@ -339,12 +363,26 @@ function createPostgresStore(databaseUrl) {
       }
       return result.rows[0] || null;
     },
-    async listUsers(limit) {
+    async countUsers() {
+      const result = await pool.query("SELECT COUNT(*)::int AS total FROM app_users");
+      return result.rows[0].total;
+    },
+    async listUsers(options) {
+      const settings = options || {};
+      const search = String(settings.search || "").trim();
+      const limit = Math.max(1, Math.min(500, Number(settings.limit) || 100));
+      const values = [];
+      let where = "";
+      if (search) {
+        values.push("%" + search.replace(/[\\%_]/g, "\\$&") + "%");
+        where = "WHERE u.username ILIKE $1 ESCAPE '\\'";
+      }
+      values.push(limit);
       const result = await pool.query(
-        "SELECT id, username, created_at AS \"createdAt\", activation_code_id AS \"activationCodeId\" FROM app_users ORDER BY created_at DESC LIMIT $1",
-        [limit]
+        "SELECT u.id, u.username, u.created_at AS \"createdAt\", u.activation_code_id AS \"activationCodeId\", a.code_hint AS \"activationCodeHint\", a.label AS \"activationLabel\", MAX(s.last_seen_at) AS \"lastSeenAt\", COUNT(s.id) FILTER (WHERE s.expires_at > NOW())::int AS \"activeSessions\" FROM app_users u LEFT JOIN activation_codes a ON a.id = u.activation_code_id LEFT JOIN auth_sessions s ON s.user_id = u.id " + where + " GROUP BY u.id, a.code_hint, a.label ORDER BY u.created_at DESC LIMIT $" + values.length,
+        values
       );
-      return result.rows.map((user) => ({ ...user, id: String(user.id), activationCodeId: user.activationCodeId == null ? null : String(user.activationCodeId) }));
+      return result.rows.map((user) => ({ ...user, id: String(user.id), activationCodeId: user.activationCodeId == null ? null : String(user.activationCodeId), activeSessions: Number(user.activeSessions) || 0 }));
     },
     async deleteSession(tokenHash) {
       await pool.query("DELETE FROM auth_sessions WHERE token_hash = $1", [tokenHash]);
@@ -429,9 +467,18 @@ function createAuthService(options) {
     return store.revokeActivationCode(id);
   }
 
-  async function listUsers(limit) {
+  async function countUsers() {
     await ensureReady();
-    return store.listUsers(Math.max(1, Math.min(500, Number(limit) || 100)));
+    return store.countUsers();
+  }
+
+  async function listUsers(options) {
+    await ensureReady();
+    const settings = typeof options === "object" && options !== null ? options : { limit: options };
+    return store.listUsers({
+      search: String(settings.search || "").trim().slice(0, 100),
+      limit: Math.max(1, Math.min(500, Number(settings.limit) || 100))
+    });
   }
 
   async function login(usernameInput, passwordInput) {
@@ -472,6 +519,7 @@ function createAuthService(options) {
     createActivationCodes,
     listActivationCodes,
     revokeActivationCode,
+    countUsers,
     listUsers,
     login,
     createSession,

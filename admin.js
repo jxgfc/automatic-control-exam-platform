@@ -30,12 +30,21 @@
     }).join("") || '<tr><td colspan="6" class="empty">暂无激活码</td></tr>';
   }
   function renderUsers(users) {
-    $("#users").innerHTML = users.map((user) => "<tr><td>" + escapeHtml(user.id) + "</td><td>" + escapeHtml(user.username) + "</td><td>" + date(user.createdAt) + "</td><td>" + escapeHtml(user.activationCodeId || "旧账号") + "</td></tr>").join("") || '<tr><td colspan="4" class="empty">暂无用户</td></tr>';
+    $("#user-result-count").textContent = users.length + " 条结果";
+    $("#users").innerHTML = users.map((user) => {
+      const activation = user.activationCodeHint || (user.activationCodeId ? "已分配" : "旧账号");
+      const sessions = Number(user.activeSessions) || 0;
+      return "<tr><td>" + escapeHtml(user.id) + "</td><td><strong>" + escapeHtml(user.username) + "</strong></td><td>" + date(user.createdAt) + "</td><td><code>" + escapeHtml(activation) + "</code></td><td class=\"label-cell\" title=\"" + escapeHtml(formatLabel(user.activationLabel)) + "\">" + escapeHtml(formatLabel(user.activationLabel)) + "</td><td>" + date(user.lastSeenAt) + "</td><td><span class=\"status status-" + (sessions ? "available" : "used") + "\">" + sessions + " 个</span></td></tr>";
+    }).join("") || '<tr><td colspan="7" class="empty">暂无匹配用户</td></tr>';
   }
-  async function refresh() {
+  async function refresh(options) {
+    const settings = options || {};
     setMessage("正在读取后台数据…");
     try {
-      const [stats, codes, users] = await Promise.all([request("/api/admin/stats"), request("/api/admin/activation-codes?limit=500"), request("/api/admin/users?limit=500")]);
+      const userSearch = String(settings.userSearch == null ? $("#user-search").value : settings.userSearch).trim();
+      const userQuery = new URLSearchParams({ limit: "500" });
+      if (userSearch) userQuery.set("search", userSearch);
+      const [stats, codes, users] = await Promise.all([request("/api/admin/stats"), request("/api/admin/activation-codes?limit=500"), request("/api/admin/users?" + userQuery.toString())]);
       $("#user-total").textContent = stats.users.total;
       $("#question-total").textContent = stats.questionBank.total;
       $("#code-available").textContent = stats.activationCodes.available;
@@ -88,6 +97,9 @@
     catch (error) { setMessage(error instanceof Error ? error.message : "激活码撤销失败"); }
   });
   $("#refresh").addEventListener("click", refresh);
+  $("#user-search-button").addEventListener("click", () => refresh());
+  $("#user-clear-button").addEventListener("click", () => { $("#user-search").value = ""; refresh({ userSearch: "" }); });
+  $("#user-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); refresh(); } });
   $("#logout").addEventListener("click", async () => { try { await request("/api/auth/logout", { method: "POST" }); } finally { window.location.replace("/login.html"); } });
   (async () => {
     try {

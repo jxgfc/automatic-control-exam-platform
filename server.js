@@ -679,11 +679,11 @@ function createAppServer(options) {
       if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService || !questionBank) throw Object.assign(new Error("后台服务不可用"), { status: 503, code: "ADMIN_UNAVAILABLE" });
-        const users = await authService.listUsers(500);
+        const users = await authService.listUsers({ limit: 500 });
         const questions = await questionBank.list({ limit: 1 });
         const codes = await authService.listActivationCodes(500);
         sendJson(response, 200, {
-          users: { total: users.length, items: users },
+          users: { total: await authService.countUsers(), items: users },
           questionBank: { total: questions.total },
           activationCodes: {
             total: codes.length,
@@ -699,7 +699,12 @@ function createAppServer(options) {
       if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
-        sendJson(response, 200, { users: await authService.listUsers(url.searchParams.get("limit")) });
+        sendJson(response, 200, {
+          users: await authService.listUsers({
+            search: url.searchParams.get("search") || "",
+            limit: url.searchParams.get("limit")
+          })
+        });
       } catch (error) { authFailure(response, error, "用户数据读取失败"); }
       return;
     }
