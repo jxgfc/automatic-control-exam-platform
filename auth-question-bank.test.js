@@ -18,6 +18,7 @@ const { createAppServer } = require("./server.js");
   const generatedPayload = await generated.json();
   assert.equal(generatedPayload.codes.length, 2);
   assert.match(generatedPayload.codes[0].code, /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.equal(generatedPayload.codes[0].label, "测试批次");
   const register = await fetch(base + "/api/auth/register", { method: "POST", ...json({ username: "tester", password: "password-123", activationCode: generatedPayload.codes[0].code }) });
   assert.equal(register.status, 201);
   const cookie = register.headers.get("set-cookie");
