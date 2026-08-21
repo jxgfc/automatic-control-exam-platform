@@ -679,18 +679,13 @@ function createAppServer(options) {
       if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService || !questionBank) throw Object.assign(new Error("后台服务不可用"), { status: 503, code: "ADMIN_UNAVAILABLE" });
-        const users = await authService.listUsers({ limit: 500 });
+        const users = await authService.listUsers({ limit: 50, offset: 0 });
         const questions = await questionBank.list({ limit: 1 });
-        const codes = await authService.listActivationCodes(500);
+        const activationCodeStats = await authService.activationCodeStats();
         sendJson(response, 200, {
           users: { total: await authService.countUsers(), items: users },
           questionBank: { total: questions.total },
-          activationCodes: {
-            total: codes.length,
-            available: codes.filter((code) => !code.usedAt && (!code.expiresAt || new Date(code.expiresAt).getTime() > Date.now())).length,
-            used: codes.filter((code) => Boolean(code.usedAt)).length,
-            expired: codes.filter((code) => !code.usedAt && code.expiresAt && new Date(code.expiresAt).getTime() <= Date.now()).length
-          }
+          activationCodes: activationCodeStats
         });
       } catch (error) { authFailure(response, error, "后台统计读取失败"); }
       return;
@@ -699,13 +694,31 @@ function createAppServer(options) {
       if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const search = url.searchParams.get("search") || "";
+        const limit = Math.max(1, Math.min(50, Number(url.searchParams.get("limit")) || 20));
+        const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
         sendJson(response, 200, {
-          users: await authService.listUsers({
-            search: url.searchParams.get("search") || "",
-            limit: url.searchParams.get("limit")
-          })
+          users: await authService.listUsers({ search, limit, offset }),
+          total: await authService.countUsers({ search }),
+          limit,
+          offset
         });
       } catch (error) { authFailure(response, error, "用户数据读取失败"); }
+      return;
+    }
+    const revokeUserSessionsMatch = request.method === "POST" && url.pathname.match(/^\/api\/admin\/users\/([0-9]+)\/revoke-sessions$/);
+    if (revokeUserSessionsMatch) {
+      if (!(await checkAdmin(request, response))) return;
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const user = await currentUser(request);
+        if (user && String(user.id) === revokeUserSessionsMatch[1]) {
+          sendJson(response, 409, { error: "不能在当前登录状态下撤销管理员自己的会话", code: "SELF_SESSION_REVOKE" });
+          return;
+        }
+        const revoked = await authService.revokeUserSessions(revokeUserSessionsMatch[1]);
+        sendJson(response, 200, { revoked });
+      } catch (error) { authFailure(response, error, "用户会话撤销失败"); }
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/question-bank") {
