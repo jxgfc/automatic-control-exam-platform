@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · 自动控制学习站</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, "Microsoft YaHei", sans-serif; background: #f4f2ed; color: #1d2529; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    main { width: min(430px, 100%); background: #fff; border: 1px solid #d8d5ce; padding: 32px; box-shadow: 0 18px 50px rgba(28, 35, 38, .11); }
+    .eyebrow { margin: 0 0 10px; color: #176b65; font-size: 12px; letter-spacing: .12em; }
+    h1 { margin: 0 0 10px; font-size: 26px; }
+    .intro { margin: 0 0 24px; color: #667176; line-height: 1.7; }
+    label { display: grid; gap: 7px; margin: 14px 0; font-size: 14px; font-weight: 600; }
+    input { width: 100%; border: 1px solid #c9ced0; border-radius: 3px; padding: 12px; font: inherit; }
+    button { border: 0; border-radius: 3px; padding: 12px 16px; font: inherit; cursor: pointer; }
+    .primary { width: 100%; background: #176b65; color: #fff; margin-top: 8px; }
+    .secondary { width: 100%; background: transparent; color: #176b65; margin-top: 10px; }
+    .error { color: #a33b32; margin: 12px 0; line-height: 1.5; font-size: 14px; }
+    .status { min-height: 1.4em; color: #667176; font-size: 13px; }
+    .activation { display: none; }
+    .activation.is-visible { display: grid; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">CONTROL STUDY SPACE</p>
+    <h1 id="title">登录后继续</h1>
+    <p class="intro">这是受邀请的自动控制学习站。请使用账号登录；新用户需要管理员发放的激活码。</p>
+    <form id="gate-form">
+      <label>账号<input id="username" autocomplete="username" required minlength="3" maxlength="64"></label>
+      <label>密码<input id="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label>
+      <label class="activation" id="activation-wrap">激活码<input id="activation" autocomplete="one-time-code" placeholder="ABCD-EFGH-IJKL" maxlength="40"></label>
+      <div class="error" id="error" role="alert" hidden></div>
+      <button class="primary" id="submit" type="submit">登录</button>
+    </form>
+    <button class="secondary" id="toggle" type="button">没有账号？使用激活码注册</button>
+    <p class="status" id="status" aria-live="polite"></p>
+  </main>
+  <script src="auth-gate.js"></script>
+</body>
+</html>

@@ -11,6 +11,7 @@
   const errorBox = $("#auth-error");
   const activationField = $("#auth-activation-field");
   const activationInput = $("#auth-activation-code");
+  const adminLink = $("#auth-admin-link");
   if (!openButton || !panel || !form) return;
   let mode = "login";
   let user = null;
@@ -29,6 +30,7 @@
     activationInput.required = !loggedIn && mode === "register";
     switchButton.hidden = loggedIn;
     logout.hidden = !loggedIn;
+    adminLink.hidden = !loggedIn || !user.isAdmin;
     submit.textContent = mode === "login" ? "登录" : "注册";
   }
   function showPanel() {
@@ -47,7 +49,7 @@
     try {
       const response = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
-      if (response.ok && payload.authenticated) user = payload.user;
+      if (response.ok && payload.authenticated) user = payload.user ? { ...payload.user, isAdmin: Boolean(payload.isAdmin) } : null;
     } catch (_) { /* Offline use does not require an account. */ }
     render();
   }
@@ -67,7 +69,7 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || (mode === "login" ? "登录失败" : "注册失败"));
-      user = payload.user;
+      user = payload.user ? { ...payload.user, isAdmin: Boolean(payload.isAdmin) } : null;
       $("#auth-password").value = "";
       activationInput.value = "";
       render();

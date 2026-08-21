@@ -78,7 +78,7 @@ async function main() {
 
     const health = await fetchText(baseUrl, "/api/health", { cache: "no-store" });
     assert.equal(health.response.status, 200);
-    assert.deepEqual(JSON.parse(health.text), { ok: true, aiProxy: true, version: "activation-codes-v1", auth: false, questionBank: false, requireActivation: false });
+    assert.deepEqual(JSON.parse(health.text), { ok: true, aiProxy: true, version: "activation-codes-v1", auth: false, questionBank: false, adminConfigured: false, requireActivation: false });
 
     const homepage = await fetchText(baseUrl, "/");
     assert.equal(homepage.response.status, 200);

@@ -204,7 +204,7 @@ function createMemoryStore() {
       if (!activation) throw activationError("激活码无效", "INVALID_ACTIVATION_CODE");
       if (activation.usedAt) throw activationError("激活码已被使用", "ACTIVATION_CODE_USED");
       if (activation.expiresAt && new Date(activation.expiresAt).getTime() <= Date.now()) throw activationError("激活码已过期", "ACTIVATION_CODE_EXPIRED");
-      const user = { id: String(nextUserId++), username, usernameNormalized: normalizedUsername, passwordHash, activationCodeId: activation.id };
+      const user = { id: String(nextUserId++), username, usernameNormalized: normalizedUsername, passwordHash, activationCodeId: activation.id, createdAt: new Date().toISOString() };
       users.set(normalizedUsername, user);
       activation.usedAt = new Date().toISOString();
       activation.usedBy = user.id;
@@ -224,6 +224,11 @@ function createMemoryStore() {
         if (user.id === session.userId) return user;
       }
       return null;
+    },
+    async listUsers(limit) {
+      return [...users.values()].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, limit).map((user) => ({
+        id: String(user.id), username: user.username, createdAt: user.createdAt, activationCodeId: user.activationCodeId ? String(user.activationCodeId) : null
+      }));
     },
     async deleteSession(tokenHash) {
       sessions.delete(tokenHash);
@@ -334,6 +339,13 @@ function createPostgresStore(databaseUrl) {
       }
       return result.rows[0] || null;
     },
+    async listUsers(limit) {
+      const result = await pool.query(
+        "SELECT id, username, created_at AS \"createdAt\", activation_code_id AS \"activationCodeId\" FROM app_users ORDER BY created_at DESC LIMIT $1",
+        [limit]
+      );
+      return result.rows.map((user) => ({ ...user, id: String(user.id), activationCodeId: user.activationCodeId == null ? null : String(user.activationCodeId) }));
+    },
     async deleteSession(tokenHash) {
       await pool.query("DELETE FROM auth_sessions WHERE token_hash = $1", [tokenHash]);
     },
@@ -417,6 +429,11 @@ function createAuthService(options) {
     return store.revokeActivationCode(id);
   }
 
+  async function listUsers(limit) {
+    await ensureReady();
+    return store.listUsers(Math.max(1, Math.min(500, Number(limit) || 100)));
+  }
+
   async function login(usernameInput, passwordInput) {
     await ensureReady();
     const username = validateUsername(usernameInput);
@@ -455,6 +472,7 @@ function createAuthService(options) {
     createActivationCodes,
     listActivationCodes,
     revokeActivationCode,
+    listUsers,
     login,
     createSession,
     userFromToken,

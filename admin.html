@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理后台 · 自动控制学习站</title>
+  <style>
+    :root { font-family: Inter, "Microsoft YaHei", sans-serif; color: #1d2529; background: #f4f2ed; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px clamp(18px, 5vw, 72px); background: #fff; border-bottom: 1px solid #d8d5ce; }
+    header h1 { margin: 0; font-size: clamp(22px, 3vw, 32px); }
+    header p { margin: 6px 0 0; color: #667176; }
+    header a, button { border: 1px solid #c9ced0; border-radius: 3px; padding: 10px 14px; background: #fff; color: #176b65; font: inherit; cursor: pointer; text-decoration: none; }
+    main { width: min(1280px, calc(100% - 36px)); margin: 28px auto 60px; }
+    .message { min-height: 1.5em; color: #a33b32; margin-bottom: 16px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .stat, .panel { background: #fff; border: 1px solid #d8d5ce; }
+    .stat { padding: 18px; }
+    .stat strong { display: block; font-size: 30px; color: #176b65; }
+    .stat span { color: #667176; font-size: 13px; }
+    .panel { padding: 20px; margin-top: 18px; overflow: auto; }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .panel-heading h2 { margin: 0; font-size: 19px; }
+    .form-row { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
+    label { display: grid; gap: 6px; color: #667176; font-size: 13px; }
+    input { min-width: 130px; border: 1px solid #c9ced0; border-radius: 3px; padding: 10px; font: inherit; }
+    .primary { background: #176b65; color: #fff; border-color: #176b65; }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; }
+    th, td { padding: 11px 10px; border-top: 1px solid #e5e2dc; text-align: left; font-size: 14px; white-space: nowrap; }
+    th { color: #667176; font-size: 12px; font-weight: 600; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #f4f2ed; padding: 12px; margin: 10px 0 0; }
+    @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } header { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header><div><h1>管理后台</h1><p>用户、题库与激活码管理</p></div><div><a href="/">返回学习站</a> <button id="logout" type="button">退出登录</button></div></header>
+  <main>
+    <div class="message" id="message" role="alert"></div>
+    <section class="stats" aria-label="站点统计"><div class="stat"><strong id="user-total">--</strong><span>注册用户</span></div><div class="stat"><strong id="question-total">--</strong><span>云端 AI 题目</span></div><div class="stat"><strong id="code-available">--</strong><span>可用激活码</span></div><div class="stat"><strong id="code-used">--</strong><span>已使用激活码</span></div></section>
+    <section class="panel"><div class="panel-heading"><h2>发放激活码</h2><button id="refresh" type="button">刷新数据</button></div><div class="form-row"><label>数量<input id="code-count" type="number" min="1" max="100" value="10"></label><label>有效天数<input id="code-days" type="number" min="0" max="3650" value="30"></label><label>批次标签<input id="code-label" maxlength="120" placeholder="例如 2026 秋季用户"></label><button class="primary" id="generate" type="button">生成激活码</button></div><pre id="generated" hidden></pre></section>
+    <section class="panel"><div class="panel-heading"><h2>激活码状态</h2></div><table><thead><tr><th>ID</th><th>提示</th><th>批次</th><th>状态</th><th>过期时间</th><th>操作</th></tr></thead><tbody id="codes"></tbody></table></section>
+    <section class="panel"><div class="panel-heading"><h2>用户数据</h2></div><table><thead><tr><th>ID</th><th>账号</th><th>注册时间</th><th>激活码记录</th></tr></thead><tbody id="users"></tbody></table></section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

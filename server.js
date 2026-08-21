@@ -543,11 +543,25 @@ function createAppServer(options) {
     : null;
   const adminToken = String(settings.questionBankAdminToken || process.env.QUESTION_BANK_ADMIN_TOKEN || "").trim();
   const activationAdminToken = String(settings.activationAdminToken || process.env.ACTIVATION_ADMIN_TOKEN || adminToken).trim();
+  const adminUserId = String(settings.adminUserId || process.env.ADMIN_USER_ID || "").trim();
+  const adminUsername = String(settings.adminUsername || process.env.ADMIN_USERNAME || "").normalize("NFKC").trim().toLocaleLowerCase("en-US");
   const activationSetting = settings.requireActivation !== undefined ? settings.requireActivation : process.env.REQUIRE_ACTIVATION;
   const requireActivation = activationSetting === true || /^(1|true|yes)$/i.test(String(activationSetting || ""));
   const currentUser = async (request) => authService && authService.configured
     ? authService.userFromToken(auth.requestSessionToken(request))
     : null;
+  const isAdminUser = (user) => Boolean(user && ((adminUserId && String(user.id) === adminUserId) || (adminUsername && String(user.username).normalize("NFKC").trim().toLocaleLowerCase("en-US") === adminUsername)));
+  const hasAdminAccess = async (request) => {
+    if (tokenMatches(request, activationAdminToken)) return true;
+    return isAdminUser(await currentUser(request));
+  };
+  const checkAdmin = async (request, response) => {
+    try {
+      if (await hasAdminAccess(request)) return true;
+      sendJson(response, 403, { error: "需要管理员账号权限", code: "ADMIN_REQUIRED" });
+    } catch (error) { authFailure(response, error, "管理员权限校验失败"); }
+    return false;
+  };
   const saveGeneratedQuestions = async (questions, criteria) => {
     if (!questionBank || !questionBank.configured || !questions.length) return;
     const schoolText = String(criteria && (criteria.school || criteria.schools) || "");
@@ -569,6 +583,7 @@ function createAppServer(options) {
         version: "activation-codes-v1",
         auth: Boolean(authService && authService.configured),
         questionBank: Boolean(questionBank && questionBank.configured),
+        adminConfigured: Boolean(adminUsername || adminUserId),
         requireActivation
       });
       return;
@@ -596,7 +611,7 @@ function createAppServer(options) {
     if (request.method === "GET" && url.pathname === "/api/auth/me") {
       try {
         const user = await currentUser(request);
-        sendJson(response, 200, { authenticated: Boolean(user), user });
+        sendJson(response, 200, { authenticated: Boolean(user), user, isAdmin: isAdminUser(user) });
       } catch (error) { authFailure(response, error, "登录状态读取失败"); }
       return;
     }
@@ -607,7 +622,7 @@ function createAppServer(options) {
         const user = await authService.register(body.username, body.password, body.activationCode);
         const session = await authService.createSession(user);
         response.setHeader("Set-Cookie", auth.sessionCookieHeader(session.token, request));
-        sendJson(response, 201, { authenticated: true, user });
+        sendJson(response, 201, { authenticated: true, user, isAdmin: isAdminUser(user) });
       } catch (error) { authFailure(response, error, "账号注册失败"); }
       return;
     }
@@ -618,7 +633,7 @@ function createAppServer(options) {
         const user = await authService.login(body.username, body.password);
         const session = await authService.createSession(user);
         response.setHeader("Set-Cookie", auth.sessionCookieHeader(session.token, request));
-        sendJson(response, 200, { authenticated: true, user });
+        sendJson(response, 200, { authenticated: true, user, isAdmin: isAdminUser(user) });
       } catch (error) { authFailure(response, error, "登录失败"); }
       return;
     }
@@ -631,7 +646,7 @@ function createAppServer(options) {
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/admin/activation-codes") {
-      if (!tokenMatches(request, activationAdminToken)) { sendJson(response, 401, { error: "缺少或无效的激活码管理员令牌", code: "ACTIVATION_ADMIN_REQUIRED" }); return; }
+      if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
         const body = await readJson(request);
@@ -641,7 +656,7 @@ function createAppServer(options) {
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/admin/activation-codes") {
-      if (!tokenMatches(request, activationAdminToken)) { sendJson(response, 401, { error: "缺少或无效的激活码管理员令牌", code: "ACTIVATION_ADMIN_REQUIRED" }); return; }
+      if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
         const codes = await authService.listActivationCodes(url.searchParams.get("limit"));
@@ -651,13 +666,41 @@ function createAppServer(options) {
     }
     const revokeActivationMatch = request.method === "POST" && url.pathname.match(/^\/api\/admin\/activation-codes\/([0-9]+)\/revoke$/);
     if (revokeActivationMatch) {
-      if (!tokenMatches(request, activationAdminToken)) { sendJson(response, 401, { error: "缺少或无效的激活码管理员令牌", code: "ACTIVATION_ADMIN_REQUIRED" }); return; }
+      if (!(await checkAdmin(request, response))) return;
       try {
         if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
         const revoked = await authService.revokeActivationCode(revokeActivationMatch[1]);
         if (!revoked) { sendJson(response, 404, { error: "激活码不存在或已经使用" }); return; }
         sendJson(response, 200, { revoked: true });
       } catch (error) { authFailure(response, error, "激活码撤销失败"); }
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/admin/stats") {
+      if (!(await checkAdmin(request, response))) return;
+      try {
+        if (!authService || !questionBank) throw Object.assign(new Error("后台服务不可用"), { status: 503, code: "ADMIN_UNAVAILABLE" });
+        const users = await authService.listUsers(500);
+        const questions = await questionBank.list({ limit: 1 });
+        const codes = await authService.listActivationCodes(500);
+        sendJson(response, 200, {
+          users: { total: users.length, items: users },
+          questionBank: { total: questions.total },
+          activationCodes: {
+            total: codes.length,
+            available: codes.filter((code) => !code.usedAt && (!code.expiresAt || new Date(code.expiresAt).getTime() > Date.now())).length,
+            used: codes.filter((code) => Boolean(code.usedAt)).length,
+            expired: codes.filter((code) => !code.usedAt && code.expiresAt && new Date(code.expiresAt).getTime() <= Date.now()).length
+          }
+        });
+      } catch (error) { authFailure(response, error, "后台统计读取失败"); }
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/admin/users") {
+      if (!(await checkAdmin(request, response))) return;
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        sendJson(response, 200, { users: await authService.listUsers(url.searchParams.get("limit")) });
+      } catch (error) { authFailure(response, error, "用户数据读取失败"); }
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/question-bank") {
@@ -700,6 +743,10 @@ function createAppServer(options) {
     }
     if (request.method === "POST" && url.pathname === "/api/ai/models") {
       try {
+        if (requireActivation && !(await currentUser(request))) {
+          sendJson(response, 401, { error: "请先登录后读取模型", code: "LOGIN_REQUIRED" });
+          return;
+        }
         const body = await readJson(request);
         const models = await requestAiModels(body, settings.fetch);
         sendJson(response, 200, { models });
@@ -709,6 +756,29 @@ function createAppServer(options) {
       return;
     }
     if (request.method !== "GET" && request.method !== "HEAD") { response.writeHead(405); response.end(); return; }
+    if (url.pathname === "/admin.html") {
+      try {
+        if (!isAdminUser(await currentUser(request))) {
+          response.writeHead(302, { Location: "/login.html?next=/admin.html" });
+          response.end();
+          return;
+        }
+      } catch (error) {
+        sendJson(response, Number(error && error.status) || 503, { error: error instanceof Error ? error.message : "账号服务不可用" });
+        return;
+      }
+    }
+    if (requireActivation && (url.pathname === "/" || url.pathname === "/index.html")) {
+      try {
+        if (!(await currentUser(request))) {
+          serveStatic(request, response, "/login.html");
+          return;
+        }
+      } catch (error) {
+        sendJson(response, Number(error && error.status) || 503, { error: error instanceof Error ? error.message : "账号服务不可用" });
+        return;
+      }
+    }
     serveStatic(request, response, url.pathname);
   });
 }

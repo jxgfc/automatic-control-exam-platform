@@ -3568,3 +3568,4 @@ footer {
 .icon-button { border: 0; background: transparent; font-size: 1.25rem; cursor: pointer; color: inherit; }
 .auth-error { margin: .5rem 0; color: #a33b32; font-size: .85rem; line-height: 1.45; }
 .auth-switch, .auth-logout { margin-top: .65rem; width: 100%; text-align: center; }
+.auth-admin-link { display: block; margin-top: .65rem; width: 100%; text-align: center; color: var(--accent, #176b65); text-decoration: none; }

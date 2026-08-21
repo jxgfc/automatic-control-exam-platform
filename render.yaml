@@ -15,5 +15,7 @@ services:
         sync: false
       - key: ACTIVATION_ADMIN_TOKEN
         sync: false
+      - key: ADMIN_USERNAME
+        sync: false
       - key: REQUIRE_ACTIVATION
         value: "true"
