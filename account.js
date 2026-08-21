@@ -16,6 +16,17 @@
   let mode = "login";
   let user = null;
 
+  function clearUsernameAutofill(username) {
+    const normalized = String(username || "").trim().toLocaleLowerCase("en-US");
+    if (!normalized) return;
+    ["#coverage-search", "#knowledge-search", "#bank-search"].forEach((selector) => {
+      const input = $(selector);
+      if (!input || input.value.trim().toLocaleLowerCase("en-US") !== normalized) return;
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
   function setError(message) {
     errorBox.textContent = message || "";
     errorBox.hidden = !message;
@@ -49,7 +60,10 @@
     try {
       const response = await fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
-      if (response.ok && payload.authenticated) user = payload.user ? { ...payload.user, isAdmin: Boolean(payload.isAdmin) } : null;
+      if (response.ok && payload.authenticated) {
+        user = payload.user ? { ...payload.user, isAdmin: Boolean(payload.isAdmin) } : null;
+        clearUsernameAutofill(user && user.username);
+      }
     } catch (_) { /* Offline use does not require an account. */ }
     render();
   }
@@ -70,6 +84,7 @@
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || (mode === "login" ? "登录失败" : "注册失败"));
       user = payload.user ? { ...payload.user, isAdmin: Boolean(payload.isAdmin) } : null;
+      clearUsernameAutofill(user && user.username);
       $("#auth-password").value = "";
       activationInput.value = "";
       render();

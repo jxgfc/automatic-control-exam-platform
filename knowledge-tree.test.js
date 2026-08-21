@@ -19,7 +19,17 @@ let server;
   const consoleErrors = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => consoleErrors.push(error.message));
+  await page.route("**/api/auth/me", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ authenticated: true, user: { id: "1", username: "tester" }, isAdmin: false })
+  }));
   await page.goto(`http://127.0.0.1:${port}/`);
+
+  assert.equal(await page.locator("#coverage-search").getAttribute("autocomplete"), "off");
+  await page.locator("#coverage-search").fill("tester");
+  await page.evaluate(() => window.ControlAccount.refresh());
+  assert.equal(await page.locator("#coverage-search").inputValue(), "");
 
   assert.equal(await page.locator('[data-tool="knowledge-tree"]').count(), 1);
   await page.locator('[data-tool="knowledge-tree"]').click();

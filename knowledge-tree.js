@@ -81,7 +81,7 @@
         <div class="knowledge-layout">
           <aside class="knowledge-tree-panel">
             <div class="knowledge-progress-summary" id="knowledge-progress-summary"></div>
-            <label class="field"><span class="field-label">搜索知识点</span><input id="knowledge-search" type="search" placeholder="例如：根轨迹、Lyapunov、Bode"></label>
+            <label class="field"><span class="field-label">搜索知识点</span><input id="knowledge-search" name="knowledge-query" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="例如：根轨迹、Lyapunov、Bode"></label>
             <div class="knowledge-filter-row"><button type="button" class="knowledge-filter is-active" data-knowledge-filter="all">全部</button><button type="button" class="knowledge-filter" data-knowledge-filter="unread">未开始</button><button type="button" class="knowledge-filter" data-knowledge-filter="learning">学习中</button><button type="button" class="knowledge-filter" data-knowledge-filter="mastered">已掌握</button></div>
             <div class="knowledge-tree" id="knowledge-tree-list"></div>
           </aside>
