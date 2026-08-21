@@ -9,3 +9,11 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: QUESTION_BANK_ADMIN_TOKEN
+        sync: false
+      - key: ACTIVATION_ADMIN_TOKEN
+        sync: false
+      - key: REQUIRE_ACTIVATION
+        value: "true"

@@ -1,0 +1,53 @@
+# Cloud AI question bank and accounts
+
+The application keeps built-in questions, browser AI history, wrong-book entries,
+favorites, attempts, and learning records in the browser. Render PostgreSQL stores
+only AI-generated questions in `ai_question_bank`; old local data is not migrated.
+
+## Render variables
+
+Set these variables on the web service:
+
+* `DATABASE_URL`: the Render PostgreSQL internal connection string.
+* `QUESTION_BANK_ADMIN_TOKEN`: a long random value used only by trusted server-side
+  import/edit clients. It is never sent to the browser or stored in localStorage.
+
+`render.yaml` declares both variables as secret (`sync: false`). The application
+creates the account, session, and question-bank tables on startup.
+
+## Public and protected endpoints
+
+* `GET /api/question-bank` is public and supports `search`, `chapter`, `type`,
+  `difficulty`, `school`, `limit`, and `offset`.
+* `POST /api/question-bank` requires `Authorization: Bearer <QUESTION_BANK_ADMIN_TOKEN>`
+  or `X-Question-Bank-Admin-Token`.
+* `PATCH /api/question-bank/:id` uses the same token check.
+* Successful `POST /api/ai/questions` writes generated questions to PostgreSQL on a
+  best-effort basis and still returns the result if the database is temporarily down.
+
+## Accounts
+
+`POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, and
+`POST /api/auth/logout` provide the account flow. Passwords use `crypto.scrypt`;
+sessions are server-side and represented by an HttpOnly, SameSite cookie. In local
+development without `DATABASE_URL`, an in-memory account store is enabled. In
+production, configure PostgreSQL before using account login.
+
+Registration also requires a one-time activation code. Set `ACTIVATION_ADMIN_TOKEN`
+on Render (it may be the same secret as `QUESTION_BANK_ADMIN_TOKEN`, but a separate
+random value is recommended). The protected admin endpoints are:
+
+* `POST /api/admin/activation-codes` with `{ "count": 10, "expiresInDays": 30,
+  "label": "batch-1" }`; the response contains the new codes once.
+* `GET /api/admin/activation-codes` to inspect hints, expiry, and usage status. Full
+  codes are never returned after creation.
+* `POST /api/admin/activation-codes/:id/revoke` to invalidate an unused code.
+
+Send the admin secret as `Authorization: Bearer <ACTIVATION_ADMIN_TOKEN>` or
+`X-Question-Bank-Admin-Token`. With `REQUIRE_ACTIVATION=true`, AI generation also
+requires a logged-in activated account. Offline calculators and public cloud-question
+queries remain available without login.
+
+The top-right login control is optional for offline calculator use. Public question
+queries remain available without logging in; local question-bank workflows are not
+blocked when the account service is unavailable.

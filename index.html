@@ -102,6 +102,21 @@
       <p class="header-subtitle">浙江工大 828 / 杭电 861 大纲驱动</p>
     </div>
     <div class="header-actions">
+      <div class="account-widget" id="account-widget">
+        <button type="button" class="account-button" id="auth-open" aria-expanded="false">登录</button>
+        <div class="account-panel" id="auth-panel" hidden>
+          <div class="account-panel-heading"><strong id="auth-title">账号登录</strong><button type="button" class="icon-button" id="auth-close" aria-label="关闭">×</button></div>
+          <form id="auth-form">
+            <label class="field"><span>账号</span><input id="auth-username" name="username" autocomplete="username" required minlength="3" maxlength="64"></label>
+            <label class="field"><span>密码</span><input id="auth-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label>
+            <label class="field auth-activation-field" id="auth-activation-field" hidden><span>激活码</span><input id="auth-activation-code" name="activationCode" autocomplete="one-time-code" placeholder="例如 ABCD-EFGH-IJKL" maxlength="40"></label>
+            <div class="auth-error" id="auth-error" role="alert" hidden></div>
+            <button type="submit" class="primary-button" id="auth-submit">登录</button>
+          </form>
+          <button type="button" class="text-button auth-switch" id="auth-switch">没有账号？注册</button>
+          <button type="button" class="text-button auth-logout" id="auth-logout" hidden>退出登录</button>
+        </div>
+      </div>
       <label class="profile-field">
         <span>考试范围</span>
         <select id="school-profile">
@@ -472,5 +487,6 @@
   <script src="knowledge-tree.js"></script>
   <script src="site-profile.js"></script>
   <script src="personal-home.js"></script>
+  <script src="account.js"></script>
 </body>
 </html>

@@ -19,6 +19,7 @@
   const WRONG_BOOK_KEY = "control-question-wrong-book-v2";
   const ATTEMPTS_KEY = "control-question-attempts-v2";
   const SETTINGS_KEY = "control-ai-settings-v1";
+  let cloudQuestions = [];
 
   const providerPresets = {
     openai: { baseUrl: "https://api.openai.com/v1", model: "gpt-5-mini", protocol: "responses", authMode: "bearer" },
@@ -163,6 +164,7 @@
       difficulty: String(item.difficulty || "中等"),
       schools: Array.isArray(item.schools) ? item.schools : ["828", "861"],
       question: normalizeFormulaText(String(item.question || "")),
+      options: Array.isArray(item.options) ? item.options.map((value) => normalizeFormulaText(String(value))).filter(Boolean).slice(0, 12) : [],
       answer: normalizeFormulaText(String(item.answer || "")),
       analysis: normalizeFormulaText(String(item.analysis || item.answer || "")),
       keywords: Array.isArray(item.keywords) ? item.keywords.map(String) : [],
@@ -192,8 +194,27 @@
 
   function allQuestions() {
     const questions = new Map();
-    builtInQuestions.concat(aiHistory).forEach((item) => questions.set(String(item.id), item));
+    builtInQuestions.concat(aiHistory, cloudQuestions).forEach((item) => {
+      const contentKey = [item.question, item.answer].join("\n");
+      const key = contentKey || String(item.id);
+      if (!questions.has(key)) questions.set(key, item);
+    });
     return [...questions.values()];
+  }
+
+  async function loadCloudQuestions() {
+    if (window.location.protocol === "file:") return;
+    try {
+      const response = await fetch("/api/question-bank?limit=100", { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json();
+      cloudQuestions = (payload.items || []).map((item, index) => normalizeQuestion({ ...item, source: item.source || "云端AI题库" }, index)).filter((item) => item.question && item.answer);
+      if ($("#bank-source-cloud")) $("#bank-source-cloud").textContent = "云端AI题库（" + cloudQuestions.length + "题）";
+      updateStats();
+      if (queue.length === 0) renderQuestion();
+    } catch (_) {
+      cloudQuestions = [];
+    }
   }
 
   function normalizeWrongEntry(entry, index) {
@@ -286,6 +307,14 @@
 
   addQuestionBankView();
 
+  const cloudSourceOption = document.createElement("option");
+  cloudSourceOption.value = "cloud";
+  cloudSourceOption.id = "bank-source-cloud";
+  cloudSourceOption.textContent = "云端AI题库";
+  $("#bank-source").insertBefore(cloudSourceOption, $("#bank-source").querySelector("option[value='wrong']"));
+  const localBankPanel = $("[data-bank-panel]");
+  if (localBankPanel && !localBankPanel.dataset.bankPanel.includes("cloud")) localBankPanel.dataset.bankPanel += " cloud";
+
   const chapters = [...new Set(builtInQuestions.map((item) => item.chapter))];
   chapters.forEach((chapter) => {
     $("#bank-chapter").insertAdjacentHTML("beforeend", '<option value="' + escapeHtml(chapter) + '">' + escapeHtml(chapter) + "</option>");
@@ -334,6 +363,7 @@
     const source = $("#bank-source").value;
     if (source === "builtin") return builtInQuestions;
     if (source === "history") return aiHistory;
+    if (source === "cloud") return cloudQuestions;
     if (source === "wrong") return wrongBookQuestions();
     if (source === "favorite") return allQuestions().filter((item) => favorites.has(String(item.id)));
     return allQuestions();
@@ -514,6 +544,7 @@
     const tool = chapterToolMap[item.chapter];
     const tags = [item.chapter, item.type, item.difficulty].filter(Boolean).map((value) => "<span>" + escapeHtml(value) + "</span>").join("");
     const keywords = (item.keywords || []).map((keyword) => "<b>" + escapeHtml(keyword) + "</b>").join("");
+    const options = (item.options || []).length ? '<ol class="exam-options" type="A">' + item.options.map((option) => "<li>" + examText(option) + "</li>").join("") + "</ol>" : "";
     const wrongEntry = wrongBook.get(String(item.id));
     const recent = latestAttempt(item.id);
     const wrongMeta = wrongEntry ? '<div class="wrong-book-meta"><strong class="wrong-status is-' + wrongEntry.status + '">' + statusLabels[wrongEntry.status] + '</strong><span>错误 ' + wrongEntry.wrongCount + ' 次</span><span>模糊 ' + wrongEntry.partialCount + ' 次</span><span>复习 ' + wrongEntry.reviewCount + ' 次</span><span>最近 ' + formatReviewDate(wrongEntry.lastReviewedAt) + '</span></div>' : "";
@@ -521,6 +552,7 @@
     const wrongNote = wrongEntry ? '<label class="wrong-note-field"><span>错因 / 复盘</span><textarea data-bank-wrong-note rows="2" placeholder="记录错因、易混点或下次检查项">' + escapeHtml(wrongEntry.note) + "</textarea></label>" : "";
     const solution = answerVisible ? '<div class="practice-solution"><h4>参考答案</h4><div class="solution-answer math-content">' + examText(item.answer) + '</div><h4>解析</h4><div class="solution-analysis math-content">' + examText(item.analysis) + '</div><div class="keyword-list">' + keywords + "</div>" + (tool ? '<button type="button" class="table-tool-button" data-bank-open-tool="' + tool + '">打开对应计算器</button>' : "") + assessment + wrongNote + "</div>" : '<div class="answer-placeholder">完成作答后再展开答案与解析</div>';
     $("#practice-question-card").innerHTML = '<div class="exam-paper-heading"><div><strong>第 ' + (queueIndex + 1) + ' 题</strong><span>（本题 ' + suggestedScore(item) + ' 分）</span></div><small>' + escapeHtml(item.source) + " · " + (queueIndex + 1) + " / " + queue.length + '</small></div><div class="practice-tags">' + tags + "</div>" + wrongMeta + '<div class="exam-question-body math-content">' + examText(item.question) + '</div><label class="field practice-answer-field"><span class="exam-answer-label">解：</span><textarea id="bank-user-answer" rows="6" placeholder="在此书写解题过程"></textarea></label>' + solution;
+    if (options) $(".exam-question-body", $("#practice-question-card")).insertAdjacentHTML("beforeend", options);
     $("#bank-user-answer").value = drafts.get(item.id) || "";
     renderExamMath($("#practice-question-card"));
     $("#practice-actions").hidden = false;
@@ -921,4 +953,5 @@
   updateStats();
   renderQuestion();
   renderMasteryDashboard();
+  loadCloudQuestions();
 })();

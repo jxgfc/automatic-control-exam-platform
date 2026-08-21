@@ -6,6 +6,14 @@ const path = require("node:path");
 
 const ROOT = __dirname;
 const MAX_BODY = 256 * 1024;
+
+// ── Authentication (optional: disabled unless DATABASE_URL or AUTH_STORE=memory) ──
+const auth = (() => {
+  try { return require("./project/backend/auth.js"); } catch (_) { return null; }
+})();
+const questionBankModule = (() => {
+  try { return require("./database/question-bank.js"); } catch (_) { return null; }
+})();
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -27,6 +35,26 @@ function sendJson(response, status, value) {
     "Cache-Control": "no-store"
   });
   response.end(body);
+}
+
+function requestHeaderToken(request) {
+  const authorization = String(request.headers.authorization || "");
+  if (/^bearer\s+/i.test(authorization)) return authorization.replace(/^bearer\s+/i, "").trim();
+  return String(request.headers["x-question-bank-admin-token"] || "").trim();
+}
+
+function tokenMatches(request, expected) {
+  const actual = requestHeaderToken(request);
+  const target = String(expected || "");
+  if (!actual || !target) return false;
+  const left = Buffer.from(actual);
+  const right = Buffer.from(target);
+  return left.length === right.length && require("node:crypto").timingSafeEqual(left, right);
+}
+
+function authFailure(response, error, fallback) {
+  const status = Number(error && error.status) || 400;
+  sendJson(response, status, { error: error instanceof Error ? error.message : fallback, code: error && error.code });
 }
 
 function readJson(request) {
@@ -350,6 +378,7 @@ function parseGeneratedQuestions(text, expectedCount) {
   if (!parsed || !Array.isArray(parsed.questions) || !parsed.questions.length) throw new Error("AI返回的题目列表为空");
   return parsed.questions.slice(0, expectedCount).map((item, index) => {
     const question = normalizeFormulaArtifacts(cleanText(item.question, 4000));
+    const options = Array.isArray(item.options) ? item.options.slice(0, 12).map((value) => normalizeFormulaArtifacts(cleanText(value, 1000))).filter(Boolean) : [];
     const answer = normalizeFormulaArtifacts(cleanText(item.answer, 4000));
     const analysis = normalizeFormulaArtifacts(cleanText(item.analysis, 8000));
     if (!question || !answer || !analysis) throw new Error("第" + (index + 1) + "道AI题缺少题目、答案或解析");
@@ -359,6 +388,7 @@ function parseGeneratedQuestions(text, expectedCount) {
       type: cleanText(item.type, 20) || "计算",
       difficulty: cleanText(item.difficulty, 20) || "中等",
       question,
+      options,
       answer,
       analysis,
       keywords: Array.isArray(item.keywords) ? item.keywords.slice(0, 8).map((value) => cleanText(value, 30)).filter(Boolean) : [],
@@ -505,12 +535,42 @@ function serveStatic(request, response, pathname) {
 
 function createAppServer(options) {
   const settings = options || {};
+  const authService = auth && typeof auth.createAuthService === "function"
+    ? auth.createAuthService({ databaseUrl: settings.databaseUrl, useMemory: settings.authUseMemory })
+    : null;
+  const questionBank = questionBankModule && typeof questionBankModule.createQuestionBankService === "function"
+    ? questionBankModule.createQuestionBankService({ databaseUrl: settings.databaseUrl, useMemory: settings.questionBankUseMemory })
+    : null;
+  const adminToken = String(settings.questionBankAdminToken || process.env.QUESTION_BANK_ADMIN_TOKEN || "").trim();
+  const activationAdminToken = String(settings.activationAdminToken || process.env.ACTIVATION_ADMIN_TOKEN || adminToken).trim();
+  const activationSetting = settings.requireActivation !== undefined ? settings.requireActivation : process.env.REQUIRE_ACTIVATION;
+  const requireActivation = activationSetting === true || /^(1|true|yes)$/i.test(String(activationSetting || ""));
+  const currentUser = async (request) => authService && authService.configured
+    ? authService.userFromToken(auth.requestSessionToken(request))
+    : null;
+  const saveGeneratedQuestions = async (questions, criteria) => {
+    if (!questionBank || !questionBank.configured || !questions.length) return;
+    const schoolText = String(criteria && (criteria.school || criteria.schools) || "");
+    const schools = ["828", "861"].filter((school) => schoolText.includes(school));
+    try {
+      await Promise.all(questions.map((question) => questionBank.insert({ ...question, schools })));
+    } catch (_) {
+      // Cloud persistence is best-effort; the browser history remains the source of truth offline.
+    }
+  };
   return http.createServer(async (request, response) => {
     const host = request.headers.host || "127.0.0.1";
     let url;
     try { url = new URL(request.url, "http://" + host); } catch (_) { response.writeHead(400); response.end(); return; }
     if (request.method === "GET" && url.pathname === "/api/health") {
-      sendJson(response, 200, { ok: true, aiProxy: true });
+      sendJson(response, 200, {
+        ok: true,
+        aiProxy: true,
+        version: "activation-codes-v1",
+        auth: Boolean(authService && authService.configured),
+        questionBank: Boolean(questionBank && questionBank.configured),
+        requireActivation
+      });
       return;
     }
     if (request.method === "GET" && url.pathname === "/favicon.ico") {
@@ -520,12 +580,122 @@ function createAppServer(options) {
     }
     if (request.method === "POST" && url.pathname === "/api/ai/questions") {
       try {
+        if (requireActivation && !(await currentUser(request))) {
+          sendJson(response, 401, { error: "请先使用激活码注册并登录", code: "LOGIN_REQUIRED" });
+          return;
+        }
         const body = await readJson(request);
         const questions = await requestAiQuestions(body, settings.fetch);
+        void saveGeneratedQuestions(questions, body.criteria);
         sendJson(response, 200, { questions });
       } catch (error) {
         sendJson(response, 400, { error: error instanceof Error ? error.message : "AI出题失败" });
       }
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/auth/me") {
+      try {
+        const user = await currentUser(request);
+        sendJson(response, 200, { authenticated: Boolean(user), user });
+      } catch (error) { authFailure(response, error, "登录状态读取失败"); }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/register") {
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const body = await readJson(request);
+        const user = await authService.register(body.username, body.password, body.activationCode);
+        const session = await authService.createSession(user);
+        response.setHeader("Set-Cookie", auth.sessionCookieHeader(session.token, request));
+        sendJson(response, 201, { authenticated: true, user });
+      } catch (error) { authFailure(response, error, "账号注册失败"); }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/login") {
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const body = await readJson(request);
+        const user = await authService.login(body.username, body.password);
+        const session = await authService.createSession(user);
+        response.setHeader("Set-Cookie", auth.sessionCookieHeader(session.token, request));
+        sendJson(response, 200, { authenticated: true, user });
+      } catch (error) { authFailure(response, error, "登录失败"); }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/auth/logout") {
+      try {
+        if (authService) await authService.deleteSession(auth.requestSessionToken(request));
+        response.setHeader("Set-Cookie", auth.clearSessionCookie());
+        sendJson(response, 200, { authenticated: false, user: null });
+      } catch (error) { authFailure(response, error, "退出登录失败"); }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/admin/activation-codes") {
+      if (!tokenMatches(request, activationAdminToken)) { sendJson(response, 401, { error: "缺少或无效的激活码管理员令牌", code: "ACTIVATION_ADMIN_REQUIRED" }); return; }
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const body = await readJson(request);
+        const codes = await authService.createActivationCodes({ count: body.count, expiresInDays: body.expiresInDays, label: body.label });
+        sendJson(response, 201, { codes });
+      } catch (error) { authFailure(response, error, "激活码生成失败"); }
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/admin/activation-codes") {
+      if (!tokenMatches(request, activationAdminToken)) { sendJson(response, 401, { error: "缺少或无效的激活码管理员令牌", code: "ACTIVATION_ADMIN_REQUIRED" }); return; }
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const codes = await authService.listActivationCodes(url.searchParams.get("limit"));
+        sendJson(response, 200, { codes });
+      } catch (error) { authFailure(response, error, "激活码查询失败"); }
+      return;
+    }
+    const revokeActivationMatch = request.method === "POST" && url.pathname.match(/^\/api\/admin\/activation-codes\/([0-9]+)\/revoke$/);
+    if (revokeActivationMatch) {
+      if (!tokenMatches(request, activationAdminToken)) { sendJson(response, 401, { error: "缺少或无效的激活码管理员令牌", code: "ACTIVATION_ADMIN_REQUIRED" }); return; }
+      try {
+        if (!authService) throw Object.assign(new Error("账号服务不可用"), { status: 503, code: "AUTH_UNAVAILABLE" });
+        const revoked = await authService.revokeActivationCode(revokeActivationMatch[1]);
+        if (!revoked) { sendJson(response, 404, { error: "激活码不存在或已经使用" }); return; }
+        sendJson(response, 200, { revoked: true });
+      } catch (error) { authFailure(response, error, "激活码撤销失败"); }
+      return;
+    }
+    if (request.method === "GET" && url.pathname === "/api/question-bank") {
+      try {
+        if (!questionBank) throw Object.assign(new Error("题库服务不可用"), { status: 503, code: "QUESTION_BANK_UNAVAILABLE" });
+        const result = await questionBank.list({
+          search: url.searchParams.get("search") || "",
+          chapter: url.searchParams.get("chapter") || "all",
+          type: url.searchParams.get("type") || "all",
+          difficulty: url.searchParams.get("difficulty") || "all",
+          school: url.searchParams.get("school") || "all",
+          limit: url.searchParams.get("limit"),
+          offset: url.searchParams.get("offset")
+        });
+        sendJson(response, 200, result);
+      } catch (error) { authFailure(response, error, "题库查询失败"); }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/question-bank") {
+      if (!tokenMatches(request, adminToken)) { sendJson(response, 401, { error: "缺少或无效的题库管理员令牌", code: "QUESTION_BANK_ADMIN_REQUIRED" }); return; }
+      try {
+        if (!questionBank) throw Object.assign(new Error("题库服务不可用"), { status: 503 });
+        const body = await readJson(request);
+        const result = await questionBank.insert(body);
+        sendJson(response, result.created ? 201 : 200, { question: result.row, created: result.created });
+      } catch (error) { authFailure(response, error, "题目保存失败"); }
+      return;
+    }
+    const editMatch = request.method === "PATCH" && url.pathname.match(/^\/api\/question-bank\/([0-9]+)$/);
+    if (editMatch) {
+      if (!tokenMatches(request, adminToken)) { sendJson(response, 401, { error: "缺少或无效的题库管理员令牌", code: "QUESTION_BANK_ADMIN_REQUIRED" }); return; }
+      try {
+        if (!questionBank) throw Object.assign(new Error("题库服务不可用"), { status: 503 });
+        const body = await readJson(request);
+        const question = await questionBank.update(editMatch[1], body);
+        if (!question) { sendJson(response, 404, { error: "题目不存在" }); return; }
+        sendJson(response, 200, { question });
+      } catch (error) { authFailure(response, error, "题目编辑失败"); }
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/ai/models") {

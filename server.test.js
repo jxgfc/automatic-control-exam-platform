@@ -239,7 +239,7 @@ const { buildPrompt, parseGeneratedQuestions, requestAiQuestions, requestAiModel
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   const health = await fetch(`http://127.0.0.1:${address.port}/api/health`).then((response) => response.json());
-  assert.deepEqual(health, { ok: true, aiProxy: true });
+  assert.deepEqual(health, { ok: true, aiProxy: true, version: "activation-codes-v1", auth: true, questionBank: true, requireActivation: false });
   const page = await fetch(`http://127.0.0.1:${address.port}/`).then((response) => response.text());
   assert.match(page, /自动控制原理考研计算平台/);
   await new Promise((resolve) => server.close(resolve));

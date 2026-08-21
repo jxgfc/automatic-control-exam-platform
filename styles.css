@@ -3557,3 +3557,14 @@ footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Account session controls */
+.account-widget { position: relative; z-index: 20; }
+.account-button { border: 1px solid var(--line, #d8d5ce); background: var(--surface, #fff); color: var(--ink, #20252b); padding: .55rem .8rem; border-radius: 4px; cursor: pointer; font: inherit; }
+.account-button.is-authenticated { color: var(--accent, #176b65); }
+.account-panel { position: absolute; right: 0; top: calc(100% + .6rem); width: min(300px, calc(100vw - 2rem)); padding: 1rem; background: var(--surface, #fff); border: 1px solid var(--line, #d8d5ce); box-shadow: 0 12px 30px rgba(20, 30, 35, .14); }
+.account-panel-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+.account-panel .field { margin-bottom: .65rem; }
+.account-panel .primary-button { width: 100%; justify-content: center; }
+.icon-button { border: 0; background: transparent; font-size: 1.25rem; cursor: pointer; color: inherit; }
+.auth-error { margin: .5rem 0; color: #a33b32; font-size: .85rem; line-height: 1.45; }
+.auth-switch, .auth-logout { margin-top: .65rem; width: 100%; text-align: center; }
