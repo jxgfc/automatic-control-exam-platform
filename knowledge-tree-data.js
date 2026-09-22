@@ -83,11 +83,12 @@
             schools: ["828", "861"], type: "计算", tool: "modeling", query: "拉氏变换 传递函数",
             prerequisites: ["modeling-differential"], resources: ["libretexts", "scipySignal"],
             overview: "传递函数是零初始条件下线性定常系统的输入输出模型。它适合串并联化简和频域分析，但不能唯一描述系统内部状态。",
-            objectives: ["正确处理导数的拉氏变换与初始条件", "由微分方程求传递函数", "由极点、零点判断系统固有模态"],
+            objectives: ["正确处理导数的拉氏变换与初始条件", "由微分方程求传递函数", "区分传递函数与单位脉冲响应函数", "由极点、零点判断系统固有模态"],
             keyPoints: ["传递函数定义必须同时满足线性定常与零初始条件。", "极点是分母根，决定自由响应模态；零点影响输入到输出的组合。", "同一传递函数可以有多种状态空间实现。"],
             formulas: [
               { name: "导数变换", latex: "\\mathcal L\\{\\dot x(t)\\}=sX(s)-x(0^-)", note: "二阶导数还要减去 $s x(0^-)+\\dot x(0^-)$。" },
-              { name: "传递函数", latex: "G(s)=\\left.\\frac{Y(s)}{U(s)}\\right|_{x(0)=0}", note: "只描述输入输出关系。" }
+              { name: "传递函数", latex: "G(s)=\\left.\\frac{Y(s)}{U(s)}\\right|_{x(0)=0}", note: "只描述输入输出关系。" },
+              { name: "单位脉冲响应", latex: "g(t)=\\mathcal L^{-1}\\{G(s)\\}", note: "零初始条件下，输入为 $\\delta(t)$ 时的输出；传递函数是脉冲响应的拉氏变换。" }
             ],
             method: ["对方程两边作拉氏变换。", "求传递函数时令所有初始条件为零。", "把含 $Y(s)$ 的项合并，计算 $Y(s)/U(s)$。", "将分母首项归一化，并给出零极点或时间常数形式。"],
             pitfalls: ["把带初始条件的全响应比值当作传递函数。", "分母没有按降幂排列或漏掉导数对应的 $s$ 次方。"],
@@ -153,7 +154,7 @@
             objectives: ["构造任意阶劳斯表", "由首列符号变化判断右半平面根数", "处理首项为零和整行全零两类特殊情况"],
             keyPoints: ["判据对象是闭环特征多项式，而不是开环分母。", "首列符号变化次数等于右半平面根数。", "整行全零表示存在关于原点对称的根，用辅助多项式求导替换。"],
             formulas: [
-              { name: "三阶稳定条件", latex: "a_3s^3+a_2s^2+a_1s+a_0:\quad a_i>0,\\ a_2a_1>a_3a_0", note: "适用于首项已统一为正的三阶多项式。" },
+              { name: "三阶稳定条件", latex: "a_3s^3+a_2s^2+a_1s+a_0:\\quad a_i>0,\\ a_2a_1>a_3a_0", note: "适用于首项已统一为正的三阶多项式。" },
               { name: "劳斯元素", latex: "b_1=\\frac{a_{n-1}a_{n-2}-a_na_{n-3}}{a_{n-1}}", note: "按前两行交叉乘积计算。" }
             ],
             method: ["按降幂补齐缺项，并使最高次系数为正。", "前两行交错填入系数。", "逐行计算并只检查首列符号。", "含参数时把首列同号条件联立求范围，并单独检查边界。"],
@@ -191,7 +192,7 @@
             prerequisites: ["time-first"], resources: ["libretexts", "mit", "pythonControl"],
             overview: "二阶系统是时域指标计算的核心。先将分母匹配到标准形式，再由阻尼比、自然频率和阻尼自然频率判断响应类型与指标。",
             objectives: ["由多项式读出 $\\zeta$ 和 $\\omega_n$", "计算峰值时间、超调量和调节时间", "由指标反求极点位置"],
-            keyPoints: ["欠阻尼条件为 $0<\\zeta<1$，阻尼振荡频率为 $\\omega_d=\\omega_n\\sqrt{1-\\zeta^2}$。", "超调量主要由 $\\zeta$ 决定，调节时间主要由 $\\zeta\\omega_n$ 决定。", "存在闭环零点时不能机械套用标准二阶公式。"],
+            keyPoints: ["欠阻尼条件为 $0<\\zeta<1$，阻尼振荡频率为 $\\omega_d=\\omega_n\\sqrt{1-\\zeta^2}$。", "极点实部决定模态衰减快慢、虚部决定振荡角频率；左半平面极点越靠近虚轴，衰减越慢。", "超调量主要由 $\\zeta$ 决定，调节时间主要由 $\\zeta\\omega_n$ 决定。", "存在闭环零点时不能机械套用标准二阶公式。"],
             formulas: [
               { name: "标准二阶", latex: "\\Phi(s)=\\frac{\\omega_n^2}{s^2+2\\zeta\\omega_ns+\\omega_n^2}", note: "无零点、单位直流增益。" },
               { name: "超调量", latex: "M_p=e^{-\\pi\\zeta/\\sqrt{1-\\zeta^2}}\\times100\\%", note: "欠阻尼单位阶跃。" },
@@ -210,9 +211,9 @@
             title: "附加零极点、主导极点与高阶近似",
             schools: ["861"], type: "分析", tool: "second-order", query: "主导极点 高阶近似",
             prerequisites: ["time-second"], resources: ["libretexts", "mit", "pythonControl"],
-            overview: "高阶系统的响应由各极点模态及其留数共同决定。距离虚轴近、衰减慢且留数不小的极点通常占主导，可据此作低阶近似。",
-            objectives: ["识别主导极点", "判断忽略远端极点的条件", "分析附加零点对超调和响应速度的影响"],
-            keyPoints: ["仅看极点距离不够，还要考虑零极点抵消和留数。", "非主导极点实部绝对值通常应为主导极点的 5 倍左右。", "靠近主导极点的闭环零点会显著改变标准二阶响应。"],
+            overview: "高阶系统的响应由各极点模态及其留数共同决定。距离虚轴近、衰减慢且留数不小的极点通常占主导，可据此作低阶近似。861 大纲明确要求本节点；828 的极点分布与性能关系见典型二阶节点，高阶近似在 828 下作为拓展阅读。",
+            objectives: ["根据极点分布判断稳定性和响应快慢", "识别主导极点", "判断忽略远端极点的条件", "分析附加零点对超调和响应速度的影响"],
+            keyPoints: ["闭环极点全部在左半平面才渐近稳定；距离虚轴越近的模态衰减越慢。", "仅看极点距离不够，还要考虑零极点抵消和留数。", "非主导极点实部绝对值通常应为主导极点的 5 倍左右。", "靠近主导极点的闭环零点会显著改变标准二阶响应。"],
             formulas: [
               { name: "模态展开", latex: "y(t)=\\sum_i R_i e^{p_it}", note: "$p_i$ 为极点，$R_i$ 为相应留数。" },
               { name: "二阶主导极点", latex: "p_{1,2}=-\\zeta\\omega_n\\pm j\\omega_n\\sqrt{1-\\zeta^2}", note: "由位置估算时域指标。" }
@@ -239,17 +240,18 @@
             prerequisites: ["modeling-blocks", "time-routh"], resources: ["libretexts", "mit"],
             overview: "稳态误差必须先确认闭环稳定，再由误差传递函数使用终值定理。单位负反馈下，开环原点极点数定义系统型别。",
             objectives: ["判断系统型别", "计算 $K_p,K_v,K_a$", "求阶跃、斜坡和抛物线输入的稳态误差"],
-            keyPoints: ["型别取决于开环净积分环节数，不是系统总阶数。", "终值定理要求 $sE(s)$ 的极点均在左半平面。", "非单位反馈应先推导误差传递函数，不能直接套表。"],
+            keyPoints: ["型别取决于开环净积分环节数，不是系统总阶数。", "有限终值定理要求 $sE(s)$ 的全部极点严格位于左半平面；等价地，$E(s)$ 除原点至多一个简单极点外，其余极点都应在左半平面。", "非单位反馈应先区分比较点偏差与跟踪误差，推导对应误差传递函数，不能直接套单位反馈误差表。"],
             formulas: [
               { name: "误差传递函数", latex: "E(s)=\\frac{R(s)}{1+G(s)H(s)}", note: "比较点误差，单位负反馈时 $H=1$。" },
               { name: "静态误差系数", latex: "K_p=\\lim_{s\\to0}L(s),\\ K_v=\\lim_{s\\to0}sL(s),\\ K_a=\\lim_{s\\to0}s^2L(s)", note: "$L=GH$。" },
-              { name: "典型误差", latex: "e_{ss}^{step}=\\frac{1}{1+K_p},\\ e_{ss}^{ramp}=\\frac{1}{K_v},\\ e_{ss}^{para}=\\frac{1}{K_a}", note: "单位幅值输入。" }
+              { name: "典型误差", latex: "e_{ss}^{step}=\\frac{1}{1+K_p},\\ e_{ss}^{ramp}=\\frac{1}{K_v},\\ e_{ss}^{para}=\\frac{1}{K_a}", note: "单位负反馈且闭环稳定；输入分别为 $1(t)$、$t$、$t^2/2$。" },
+              { name: "有限终值定理", latex: "e_{ss}=\\lim_{t\\to\\infty}e(t)=\\lim_{s\\to0}sE(s)", note: "先检查 $sE(s)$ 极点条件。代数极限存在，不代表时域一定存在有限终值。" }
             ],
             method: ["写出闭环特征方程并确认稳定。", "从开环 $L(s)$ 数原点净极点数。", "按输入阶次选择 $K_p,K_v$ 或 $K_a$。", "也可直接用 $e_{ss}=\\lim_{s\\to0}sE(s)$ 复核。"],
             pitfalls: ["闭环不稳定时仍给出有限稳态误差。", "把输入幅值遗漏；斜坡速度或抛物线加速度不是 1 时要乘相应系数。"],
             example: {
               problem: "单位负反馈开环 $G(s)=10/[s(s+2)]$，求单位斜坡稳态误差。",
-              steps: ["系统含一个原点极点，为 I 型。", "$K_v=\\lim_{s\\to0}sG(s)=10/2=5$。", "$e_{ss}=1/K_v=0.2$。"],
+              steps: ["闭环分母为 $s^2+2s+10$，根均在左半平面，满足稳定前提。", "系统含一个原点极点，为 I 型。", "$K_v=\\lim_{s\\to0}sG(s)=10/2=5$。", "$e_{ss}=1/K_v=0.2$。"],
               answer: "$e_{ss}=0.2$。"
             }
           },
@@ -413,14 +415,14 @@
             objectives: ["正确确定 $P,N,Z$ 的符号约定", "处理虚轴开环极点的绕行", "计算增益交叉频率、相位交叉频率及稳定裕度"],
             keyPoints: ["必须先数开环右半平面极点 $P$。", "不同教材对顺/逆时针包围的 $N$ 符号约定不同，答题时先声明。", "相角裕度在 $|L|=1$ 处测量，幅值裕度在相角为 $-180^\\circ$ 处测量。"],
             formulas: [
-              { name: "Nyquist 关系", latex: "Z=P-N", note: "采用顺时针包围 $-1$ 点为正的约定。" },
+              { name: "Nyquist 关系", latex: "Z=P-N", note: "本工具令逆时针净包围 $-1$ 点为正；若教材采用相反方向，必须同步改变 $N$ 的符号。" },
               { name: "稳定裕度", latex: "\\gamma=180^\\circ+\\angle L(j\\omega_c),\\qquad h=\\frac{1}{|L(j\\omega_g)|}", note: "$\\omega_c$ 为增益交叉频率，$\\omega_g$ 为相位交叉频率。" }
             ],
             method: ["确定开环右半平面极点数与虚轴极点。", "按完整 Nyquist 路径判断曲线对 $-1$ 点的净包围。", "由约定计算 $Z$，闭环稳定要求 $Z=0$。", "从 Bode 或频率方程求两类交叉频率与裕度。"],
             pitfalls: ["只看曲线是否穿过 $-1$，没有结合 $P$。", "把相角裕度和幅值裕度的测量频率互换。"],
             example: {
               problem: "开环无右半平面极点，Nyquist 曲线不包围 $-1$ 点。判断闭环稳定性。",
-              steps: ["$P=0$。", "不包围临界点，按顺时针为正有 $N=0$。", "$Z=P-N=0$，闭环无右半平面极点。"],
+              steps: ["$P=0$。", "不包围临界点，逆时针净包围数为 $N=0$。", "$Z=P-N=0$，闭环无右半平面极点。"],
               answer: "在无虚轴极点等附加问题时，闭环稳定。"
             }
           },
@@ -589,7 +591,7 @@
             objectives: ["由极点模判断稳定性", "使用低阶 Jury 条件", "通过双线性变换转用劳斯判据"],
             keyPoints: ["单位圆上的单根对应临界稳定，不属于渐近稳定。", "二阶多项式可用 $D(1)>0,D(-1)>0,|a_0|<a_n$。", "双线性变换必须保持稳定域映射方向。"],
             formulas: [
-              { name: "二阶 Jury 条件", latex: "D(z)=a_2z^2+a_1z+a_0:\quad D(1)>0,\\ D(-1)>0,\\ |a_0|<a_2", note: "先令最高次系数 $a_2>0$。" },
+              { name: "二阶 Jury 条件", latex: "D(z)=a_2z^2+a_1z+a_0:\\quad D(1)>0,\\ D(-1)>0,\\ |a_0|<a_2", note: "先令最高次系数 $a_2>0$。" },
               { name: "双线性映射", latex: "z=\\frac{1+w}{1-w}", note: "$|z|<1$ 映射到 $\\operatorname{Re}w<0$。" }
             ],
             method: ["写出闭环特征多项式并补齐缺项。", "低阶时直接使用 Jury 必要充分条件。", "高阶时构造 Jury 表或作双线性变换。", "含参数时联立全部严格不等式并检查边界根。"],
@@ -700,7 +702,7 @@
             prerequisites: ["state-model", "modeling-laplace"], resources: ["libretexts", "scipySignal", "pythonControl"],
             overview: "状态模型到传递矩阵由消去状态得到；传递函数到状态模型可选能控标准型、能观标准型或对角型。非奇异状态变换不改变输入输出行为。",
             objectives: ["计算 $G(s)=C(sI-A)^{-1}B+D$", "构造常见标准型实现", "完成非奇异状态变换"],
-            keyPoints: ["传递函数只保留能控且能观部分，可能隐藏内部模态。", "不同状态变量对应相似矩阵 $A$。", "状态变换 $x=Tz$ 后 $B,C$ 也必须同步变换。"],
+            keyPoints: ["最小实现同时完全能控、完全能观；同一传递函数也可能有隐藏不可控或不可观模态的非最小实现。", "对 SISO 真分式系统，分子分母互素时对应的标准实现才可直接作为最小实现判断依据。", "不同状态变量对应相似矩阵 $A$；状态变换 $x=Tz$ 后 $B,C$ 也必须同步变换。"],
             formulas: [
               { name: "传递矩阵", latex: "G(s)=C(sI-A)^{-1}B+D", note: "零初始条件。" },
               { name: "状态变换", latex: "\\bar A=T^{-1}AT,\\quad\\bar B=T^{-1}B,\\quad\\bar C=CT", note: "$x=T\\bar x$。" }
@@ -739,11 +741,12 @@
             schools: ["828", "861"], type: "计算", tool: "state-space", query: "能控性 能观性",
             prerequisites: ["state-model", "state-conversion"], resources: ["libretexts", "pythonControl"],
             overview: "能控性判断输入能否驱动全部状态，能观性判断输出能否反推出全部状态。二者是状态反馈和观测器设计的前提，并在非奇异状态变换下不变。",
-            objectives: ["使用 Kalman 秩判据", "使用 PBH 判据处理参数和特征值问题", "判断实现是否最小"],
-            keyPoints: ["单输入 n 阶系统能控矩阵为 $[B,AB,\\ldots,A^{n-1}B]$。", "能观性与能控性互为对偶。", "能控且能观的实现才是给定传递函数的最小实现。"],
+            objectives: ["使用 Kalman 秩判据", "使用 PBH 判据处理参数和特征值问题", "判断实现是否最小", "判断输出能控性并说明其与状态能控性的区别"],
+            keyPoints: ["单输入 n 阶系统能控矩阵为 $[B,AB,\\ldots,A^{n-1}B]$。", "输出能控性关注输入能否改变输出通道，不能用状态能控矩阵直接替代。", "能观性与能控性互为对偶；能控且能观的实现才是给定传递函数的最小实现。"],
             formulas: [
               { name: "Kalman 判据", latex: "\\mathcal C=[B,AB,\\ldots,A^{n-1}B],\\quad\\mathcal O=\\begin{bmatrix}C\\\\CA\\\\\\vdots\\\\CA^{n-1}\\end{bmatrix}", note: "满秩 $n$ 分别表示完全能控、完全能观。" },
-              { name: "PBH 判据", latex: "\\operatorname{rank}[\\lambda I-A, B]=n,\\quad\\operatorname{rank}\\begin{bmatrix}\\lambda I-A\\\\C\\end{bmatrix}=n", note: "对 $A$ 的每个特征值检查。" }
+              { name: "PBH 判据", latex: "\\operatorname{rank}[\\lambda I-A, B]=n,\\quad\\operatorname{rank}\\begin{bmatrix}\\lambda I-A\\\\C\\end{bmatrix}=n", note: "对 $A$ 的每个特征值检查。" },
+              { name: "输出能控矩阵", latex: "\\mathcal C_o=[D,CB,CAB,\\ldots,CA^{n-1}B]", note: "D=0 时可省略 D；输出维数为 $p$ 时，输出能控要求该矩阵秩为 $p$。" }
             ],
             method: ["确认状态维数 $n$。", "构造能控矩阵或能观矩阵并求秩。", "含参数时可用行列式或 PBH 判据找降秩条件。", "把结论与不可控/不可观特征值联系起来。"],
             pitfalls: ["矩阵不是方阵时仍直接求行列式判断秩。", "只看 $B$ 或 $C$ 是否含零元素判断能控能观。"],
@@ -751,7 +754,15 @@
               problem: "$A=\\operatorname{diag}(-1,-2),B=[1,0]^T$，判断能控性。",
               steps: ["$AB=[-1,0]^T$。", "$\\mathcal C=[B,AB]=\\begin{bmatrix}1&-1\\\\0&0\\end{bmatrix}$。", "秩为 1，小于状态维数 2。"],
               answer: "系统不完全能控，特征值 $-2$ 对应模态不可控。"
-            }
+            },
+            examples: [
+              {
+                title: "输出能控不等于状态完全能控",
+                problem: "$A=\\operatorname{diag}(-1,-2)$、$B=[1,0]^T$、$C=[1,0]$、$D=0$，系统是否输出能控？",
+                steps: ["$\\mathcal C=[B,AB]=\\begin{bmatrix}1&-1\\\\0&0\\end{bmatrix}$ 的秩为 $1<2$，状态不完全能控。", "$CB=1$、$CAB=-1$，输出能控矩阵 $\\mathcal C_o=[D,CB,CAB]=[0,1,-1]$。", "输出维数为 $1$，且 $\\operatorname{rank}\\mathcal C_o=1$，故输出能控。"],
+                answer: "输出能控，但状态不完全能控。输入虽然无法改变第二个状态，仍能使唯一输出到达任意目标值。"
+              }
+            ]
           },
           {
             id: "state-decomposition",
@@ -798,8 +809,8 @@
             schools: ["828", "861"], type: "计算", tool: "state-space", query: "状态反馈 极点配置",
             prerequisites: ["state-controllability", "state-conversion"], resources: ["libretexts", "mit", "pythonControl"],
             overview: "完全能控系统可用状态反馈 $u=-Kx+vr$ 任意配置闭环极点。反馈增益通过比较特征多项式或 Ackermann 公式计算，前置增益用于恢复参考跟踪。",
-            objectives: ["判断能控后配置闭环极点", "计算单输入反馈增益", "区分状态反馈与静态输出反馈能力"],
-            keyPoints: ["闭环矩阵为 $A-BK$，符号取决于反馈定义。", "极点配置不能改变系统能控性。", "静态输出反馈 $u=-Fy$ 一般不能任意配置全部极点。"],
+            objectives: ["判断能控后配置闭环极点", "计算单输入反馈增益", "区分状态反馈与静态输出反馈能力", "判断输出反馈极点配置的限制"],
+            keyPoints: ["闭环矩阵为 $A-BK$，符号取决于反馈定义。", "极点配置不能改变系统能控性。", "静态输出反馈 $u=-Fy$ 一般不能任意配置全部极点；动态输出反馈可通过观测器和增广系统设计。", "参考跟踪需要前置增益或积分增广，不能只把极点配置完成当作跟踪误差为零。"],
             formulas: [
               { name: "闭环系统", latex: "u=-Kx+vr\\Rightarrow\\dot x=(A-BK)x+Bvr", note: "极点为 $A-BK$ 的特征值。" },
               { name: "Ackermann 公式", latex: "K=e_n^T\\mathcal C^{-1}\\phi_d(A)", note: "单输入完全能控系统。" }
@@ -810,7 +821,15 @@
               problem: "$A=\\begin{bmatrix}0&1\\\\0&0\\end{bmatrix},B=[0,1]^T$，取 $u=-[k_1,k_2]x$，希望极点为 $-2,-3$。求 $K$。",
               steps: ["闭环特征多项式为 $s^2+k_2s+k_1$。", "期望多项式 $(s+2)(s+3)=s^2+5s+6$。", "比较系数得 $k_2=5,k_1=6$。"],
               answer: "$K=[6,5]$。"
-            }
+            },
+            examples: [
+              {
+                title: "静态输出反馈不能任意配置极点",
+                problem: "$A=\\begin{bmatrix}0&1\\\\-2&-3\\end{bmatrix}$、$B=[0,1]^T$、$C=[1,0]$、$D=0$，采用 $u=-Fy$。能否用标量 $F$ 将极点配置为 $-1,-4$？",
+                steps: ["$A-BFC=\\begin{bmatrix}0&1\\\\-(2+F)&-3\\end{bmatrix}$。", "闭环特征多项式为 $s^2+3s+(2+F)$，其中 $s$ 项系数固定为 $3$。", "目标多项式为 $s^2+5s+4$，无论怎样选择 $F$ 都无法同时匹配系数。"],
+                answer: "不能。该系统完全能控且能观，仍不能用一个静态输出反馈系数任意配置极点；可考虑状态反馈或观测器构成的动态输出反馈。"
+              }
+            ]
           },
           {
             id: "state-observer",

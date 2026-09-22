@@ -36,12 +36,13 @@ let browser;
     return {
       total: window.ControlSyllabus.length,
       theoryQuestions: window.ControlTheoryQuestions.length,
+      bankQuestions: window.ControlPracticeQuestions.length + window.ControlTheoryQuestions.length,
       missing,
       statuses: [...new Set(window.ControlSyllabus.map((item) => item.status))].sort()
     };
   });
   assert.equal(coverageAudit.total, 37);
-  assert.equal(coverageAudit.theoryQuestions, 30);
+  assert.equal(coverageAudit.theoryQuestions, 38);
   assert.deepEqual(coverageAudit.missing, []);
   assert.deepEqual(coverageAudit.statuses, ["available", "theory"]);
 
@@ -167,13 +168,17 @@ let browser;
   await page.screenshot({ path: path.join(__dirname, "calculator-state-space-desktop.png"), fullPage: true });
 
   await page.locator('[data-tool="theory"]').click();
-  assert.match(await page.locator("#theory-progress").innerText(), /1 \/ 30/);
+  const visibleTheoryCount = await page.evaluate(() => {
+    const profile = document.querySelector("#school-profile").value;
+    return window.ControlTheoryQuestions.filter((item) => profile === "all" || item.schools.includes(profile)).length;
+  });
+  assert.match(await page.locator("#theory-progress").innerText(), new RegExp("1 \/ " + visibleTheoryCount));
   await page.locator("#theory-reveal").click();
   assert.match(await page.locator("#theory-card").innerText(), /参考答案/);
   assert.ok(await page.locator("#theory-card .keyword-list b").count() >= 3);
 
   await page.locator('[data-tool="question-bank"]').click();
-  assert.match(await page.locator("#bank-stat-strip").innerText(), /60\s*总题库/);
+  assert.match(await page.locator("#bank-stat-strip").innerText(), new RegExp(coverageAudit.bankQuestions + "\\s*总题库"));
   await page.locator("#bank-start").click();
   assert.match(await page.locator("#practice-question-card").innerText(), /1 \/ 10/);
   await page.locator("#bank-reveal").click();

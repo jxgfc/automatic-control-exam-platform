@@ -166,6 +166,7 @@ function createMemoryStore() {
   return {
     mode: "memory",
     async initialize() {},
+    async checkHealth() { return true; },
     async findUserByUsername(normalizedUsername) {
       return users.get(normalizedUsername) || null;
     },
@@ -321,11 +322,18 @@ function createPostgresStore(databaseUrl) {
       ? { rejectUnauthorized: false }
       : undefined
   });
+  // Idle connections can be closed while a serverless database sleeps or restarts.
+  // Handle the pool event; subsequent requests and health probes report/retry the failure.
+  pool.on("error", () => {});
 
   return {
     mode: "postgres",
     async initialize() {
       await pool.query(readSchema());
+    },
+    async checkHealth() {
+      await pool.query({ text: "SELECT 1", query_timeout: 3000 });
+      return true;
     },
     async findUserByUsername(normalizedUsername) {
       const result = await pool.query(
@@ -484,7 +492,7 @@ function createAuthService(options) {
 
   let initializationError = null;
   const ready = store
-    ? Promise.resolve(store.initialize()).catch((error) => {
+    ? Promise.resolve(store.initialize()).then(() => true).catch((error) => {
       initializationError = error;
       return false;
     })
@@ -608,6 +616,17 @@ function createAuthService(options) {
     return publicUser(await store.findUserBySession(sessionTokenHash(token)));
   }
 
+  async function checkHealth() {
+    if (!store) return false;
+    await ready;
+    if (initializationError || typeof store.checkHealth !== "function") return false;
+    try {
+      return Boolean(await store.checkHealth());
+    } catch (_) {
+      return false;
+    }
+  }
+
   async function deleteSession(token) {
     if (!token || !store) return;
     await ensureReady();
@@ -630,6 +649,7 @@ function createAuthService(options) {
     login,
     createSession,
     userFromToken,
+    checkHealth,
     deleteSession,
     async close() {
       if (store && typeof store.close === "function") await store.close();

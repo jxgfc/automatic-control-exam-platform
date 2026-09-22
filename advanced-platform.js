@@ -138,7 +138,7 @@ Y,A,-2</textarea></label>
         <div class="tool-workspace"><section class="calculator-input-area">${transferInput("nyquist", "1", "(s+1)^2")}
           <div class="two-field-grid"><label class="field"><span class="field-label">ωmin</span><input id="nyquist-min" type="number" value="0.001" min="0.000001"></label><label class="field"><span class="field-label">ωmax</span><input id="nyquist-max" type="number" value="1000" min="0.001"></label></div>
           <div id="nyquist-error" class="error-message" role="alert" hidden></div><button id="nyquist-calculate" class="primary-button" type="button"><span>绘制并判断稳定性</span><span aria-hidden="true">→</span></button>
-          <div class="method-strip"><span>判据</span><div><p>顺时针包围为正：Z = P − N</p><p>Z = 0 时闭环稳定</p></div></div>
+          <div class="method-strip"><span>判据</span><div><p>本工具约定逆时针净包围为正：Z = P − N</p><p>Z = 0 时闭环稳定</p></div></div>
         </section><section class="calculator-output-area" id="nyquist-result" aria-live="polite"></section></div>
       </section>
 
@@ -312,7 +312,7 @@ Y,A,-2</textarea></label>
       const transfer = parseTransfer("#nyquist-numerator", "#nyquist-denominator");
       const result = Core.nyquistAnalysis(transfer.numerator, transfer.denominator, $("#nyquist-min").value, $("#nyquist-max").value, 520);
       $("#nyquist-result").innerHTML = summary("闭环稳定性", result.closedLoopStable ? "稳定：Z = 0" : "不稳定：Z = " + result.closedLoopRightHalfPlanePoles, !result.closedLoopStable) +
-        metricStrip([["P（开环右半平面极点）", String(result.openLoopRightHalfPlanePoles)], ["N（顺时针围绕数）", String(result.clockwiseEncirclements)], ["Z（闭环右半平面极点）", String(result.closedLoopRightHalfPlanePoles)], ["闭环带宽", result.bandwidth ? formatNumber(result.bandwidth) + " rad/s" : "未检出"]]) +
+        metricStrip([["P（开环右半平面极点）", String(result.openLoopRightHalfPlanePoles)], ["N（逆时针净围绕数）", String(result.counterclockwiseEncirclements)], ["Z（闭环右半平面极点）", String(result.closedLoopRightHalfPlanePoles)], ["闭环带宽", result.bandwidth ? formatNumber(result.bandwidth) + " rad/s" : "未检出"]]) +
         '<div class="nyquist-plot"><span class="block-label">Nyquist曲线</span>' + nyquistSvg(result) + "</div>" +
         '<div class="derivation-steps"><p>谐振峰值 M<sub>r</sub> = ' + formatNumber(result.resonantPeak) + "，谐振频率 ω<sub>r</sub> = " + formatNumber(result.resonantFrequency) + " rad/s。</p></div>";
     } catch (error) { setError("#nyquist-error", error instanceof Error ? error.message : "Nyquist计算失败"); }

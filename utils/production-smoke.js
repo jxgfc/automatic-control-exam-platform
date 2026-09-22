@@ -78,12 +78,18 @@ async function main() {
 
     const health = await fetchText(baseUrl, "/api/health", { cache: "no-store" });
     assert.equal(health.response.status, 200);
-    assert.deepEqual(JSON.parse(health.text), { ok: true, aiProxy: true, version: "activation-codes-v1", auth: false, questionBank: false, adminConfigured: false, requireActivation: false });
+    assert.deepEqual(JSON.parse(health.text), { ok: true, aiProxy: true, version: "activation-codes-v1", auth: false, questionBank: false, authReady: false, questionBankReady: false, databaseReady: false, adminConfigured: false, requireActivation: false });
 
     const homepage = await fetchText(baseUrl, "/");
     assert.equal(homepage.response.status, 200);
     assert.match(homepage.response.headers.get("content-type") || "", /text\/html/);
     assert.match(homepage.text, /自动控制原理考研计算平台/);
+
+    const privateSource = await fetchText(baseUrl, "/server.js");
+    assert.equal(privateSource.response.status, 404);
+    const encodedHome = await fetchText(baseUrl, "/%69ndex.html");
+    assert.equal(encodedHome.response.status, 200);
+    assert.match(encodedHome.text, /自动控制原理考研计算平台/);
 
     const stylesheet = await fetchText(baseUrl, "/styles.css");
     assert.equal(stylesheet.response.status, 200);
@@ -92,6 +98,13 @@ async function main() {
     const katex = await fetchText(baseUrl, "/vendor/katex/node_modules/katex/dist/katex.min.js");
     assert.equal(katex.response.status, 200);
     assert.match(katex.response.headers.get("content-type") || "", /javascript/);
+    const katexFont = await fetchText(baseUrl, "/vendor/katex/node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff2");
+    assert.equal(katexFont.response.status, 200);
+    assert.match(katexFont.response.headers.get("content-type") || "", /font/);
+    const publicGuide = await fetchText(baseUrl, "/PERSONAL-SITE.md");
+    assert.equal(publicGuide.response.status, 200);
+    const blockedDatabase = await fetchText(baseUrl, "/database/001-auth.sql");
+    assert.equal(blockedDatabase.response.status, 404);
 
     const apiError = await fetchText(baseUrl, "/api/ai/questions", {
       method: "POST",

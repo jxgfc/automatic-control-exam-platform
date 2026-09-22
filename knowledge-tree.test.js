@@ -55,9 +55,13 @@ let server;
   assert.ok(await page.locator(".knowledge-node").count() >= 1);
   assert.match(await page.locator("#knowledge-tree-list").innerText(), /劳斯/);
   await page.locator("#knowledge-search").fill("");
+  await page.locator('[data-knowledge-domain="modern"]').click();
+  assert.match(await page.locator("#knowledge-tree-list").innerText(), /状态空间/);
+  assert.match(await page.locator("#knowledge-progress-summary").innerText(), /现代控制掌握/);
+  await page.locator('[data-knowledge-domain="all"]').click();
   await page.locator('[data-knowledge-action="practice"]').click();
   assert.equal(await page.locator('[data-tool="question-bank"]').evaluate((button) => button.classList.contains("active")), true);
-  assert.equal(await page.locator("#bank-search").inputValue(), "反馈 开环 闭环");
+  assert.equal(await page.locator("#bank-search").inputValue(), "状态空间 建模");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('[data-tool="knowledge-tree"]').click();

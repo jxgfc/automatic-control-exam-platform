@@ -1,9 +1,20 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const http = require("node:http");
+const vm = require("node:vm");
 const { buildPrompt, parseGeneratedQuestions, requestAiQuestions, requestAiModels, modelsEndpointUrl, questionTimeoutMs, isMicuChatModel, createAppServer } = require("./server.js");
 
 (async () => {
+  const authGateContext = { window: { location: { origin: "https://example.test" } }, document: { querySelector: () => null }, URL, URLSearchParams };
+  vm.runInNewContext(fs.readFileSync("auth-gate.js", "utf8"), authGateContext);
+  const safeNextPath = authGateContext.window.ControlAuthGate.safeNextPath;
+  assert.equal(safeNextPath("/admin.html?tab=users"), "/admin.html?tab=users");
+  assert.equal(safeNextPath("//evil.example/"), "/");
+  assert.equal(safeNextPath("/\\\\evil.example/"), "/");
+  assert.equal(safeNextPath("https://evil.example/"), "/");
+
   const prompt = buildPrompt({ school: "828", chapter: "根轨迹", type: "计算", difficulty: "中等", count: 3, extra: "含复数极点" });
   assert.match(prompt, /3道原创/);
   assert.match(prompt, /根轨迹/);
@@ -238,10 +249,28 @@ const { buildPrompt, parseGeneratedQuestions, requestAiQuestions, requestAiModel
   const server = createAppServer({ fetch: mockFetch });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
+  const rawGet = (pathname) => new Promise((resolve, reject) => {
+    const request = http.request({ host: "127.0.0.1", port: address.port, path: pathname, method: "GET" }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve({ status: response.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    request.on("error", reject);
+    request.end();
+  });
   const health = await fetch(`http://127.0.0.1:${address.port}/api/health`).then((response) => response.json());
-  assert.deepEqual(health, { ok: true, aiProxy: true, version: "activation-codes-v1", auth: true, questionBank: true, adminConfigured: false, requireActivation: false });
+  assert.deepEqual(health, { ok: true, aiProxy: true, version: "activation-codes-v1", auth: true, questionBank: true, authReady: true, questionBankReady: true, databaseReady: true, adminConfigured: false, requireActivation: false });
   const page = await fetch(`http://127.0.0.1:${address.port}/`).then((response) => response.text());
   assert.match(page, /自动控制原理考研计算平台/);
+  const privateSource = await fetch(`http://127.0.0.1:${address.port}/server.js`);
+  assert.equal(privateSource.status, 404);
+  const traversal = await fetch(`http://127.0.0.1:${address.port}/%2e%2e/server.js`);
+  // WHATWG URL normalizes this encoded dot segment before it reaches Node;
+  // the normalized private path must still be denied by the static allowlist.
+  assert.equal(traversal.status, 404);
+  assert.equal((await rawGet("/..%2fserver.js")).status, 400);
+  assert.equal((await rawGet("/%5cserver.js")).status, 400);
+  assert.equal((await rawGet("/SERVER.JS")).status, 404);
   await new Promise((resolve) => server.close(resolve));
 
   console.log("AI server tests passed");

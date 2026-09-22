@@ -4,12 +4,27 @@
   const data = window.ControlKnowledgeTree || { chapters: [], resources: {} };
   const chapters = data.chapters || [];
   const nodes = chapters.flatMap((chapter) => chapter.nodes.map((node) => ({ ...node, chapterId: chapter.id, chapterTitle: chapter.title })));
+  const domainByChapter = {
+    "基础概念": "classical",
+    "系统建模": "classical",
+    "时域分析": "classical",
+    "稳态误差": "classical",
+    "根轨迹": "classical",
+    "频域分析": "classical",
+    "系统校正": "classical",
+    "离散系统": "classical",
+    "非线性系统": "nonlinear",
+    "状态空间": "modern"
+  };
+  nodes.forEach((node) => { node.domain = node.domain || domainByChapter[node.chapterTitle] || "classical"; });
+  const domainLabels = { classical: "经典控制", modern: "现代控制", nonlinear: "非线性控制" };
   const $ = (selector, root) => (root || document).querySelector(selector);
   const $$ = (selector, root) => [...(root || document).querySelectorAll(selector)];
   const PROGRESS_KEY = "control-knowledge-progress-v1";
   const progress = readProgress();
   let activeNodeId = nodes[0] ? nodes[0].id : "";
   let activeChapterId = chapters[0] ? chapters[0].id : "";
+  let activeDomain = "all";
 
   function readProgress() {
     try {
@@ -67,10 +82,46 @@
     return status === "mastered" ? "已掌握" : status === "learning" ? "学习中" : "未开始";
   }
 
-  function completionStats() {
-    const started = nodes.filter((node) => statusOf(node) !== "unread").length;
-    const mastered = nodes.filter((node) => statusOf(node) === "mastered").length;
-    return { started, mastered, total: nodes.length, percent: nodes.length ? Math.round(mastered / nodes.length * 100) : 0 };
+  function completionStats(domain) {
+    const scopedNodes = !domain || domain === "all" ? nodes : nodes.filter((node) => node.domain === domain);
+    const started = scopedNodes.filter((node) => statusOf(node) !== "unread").length;
+    const mastered = scopedNodes.filter((node) => statusOf(node) === "mastered").length;
+    return { started, mastered, total: scopedNodes.length, percent: scopedNodes.length ? Math.round(mastered / scopedNodes.length * 100) : 0 };
+  }
+
+  function domainNodes() {
+    return activeDomain === "all" ? nodes : nodes.filter((node) => node.domain === activeDomain);
+  }
+
+  function selectDomain(domain) {
+    activeDomain = domain;
+    $$('[data-knowledge-domain]').forEach((button) => {
+      const selected = button.dataset.knowledgeDomain === domain;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    const scopedNodes = domainNodes();
+    const selected = scopedNodes.find((node) => node.id === activeNodeId) || scopedNodes[0];
+    if (selected) {
+      activeNodeId = selected.id;
+      activeChapterId = selected.chapterId;
+    }
+    renderProgressSummary();
+    renderTree();
+    renderLesson();
+  }
+
+  function selectNode(id) {
+    const target = nodes.find((node) => node.id === id);
+    if (!target) return;
+    activeNodeId = target.id;
+    activeChapterId = target.chapterId;
+    if (activeDomain !== "all" && target.domain !== activeDomain) {
+      selectDomain("all");
+      return;
+    }
+    renderTree();
+    renderLesson();
   }
 
   function addView() {
@@ -82,6 +133,7 @@
           <aside class="knowledge-tree-panel">
             <div class="knowledge-progress-summary" id="knowledge-progress-summary"></div>
             <label class="field"><span class="field-label">搜索知识点</span><input id="knowledge-search" name="knowledge-query" type="search" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="例如：根轨迹、Lyapunov、Bode"></label>
+            <div class="knowledge-domain-row" role="group" aria-label="控制理论方向"><button type="button" class="knowledge-domain is-active" data-knowledge-domain="all">全部方向</button><button type="button" class="knowledge-domain" data-knowledge-domain="classical">经典控制</button><button type="button" class="knowledge-domain" data-knowledge-domain="modern">现代控制</button><button type="button" class="knowledge-domain" data-knowledge-domain="nonlinear">非线性</button></div>
             <div class="knowledge-filter-row"><button type="button" class="knowledge-filter is-active" data-knowledge-filter="all">全部</button><button type="button" class="knowledge-filter" data-knowledge-filter="unread">未开始</button><button type="button" class="knowledge-filter" data-knowledge-filter="learning">学习中</button><button type="button" class="knowledge-filter" data-knowledge-filter="mastered">已掌握</button></div>
             <div class="knowledge-tree" id="knowledge-tree-list"></div>
           </aside>
@@ -90,14 +142,18 @@
       </section>`);
   }
 
-  function nodeMatches(node, query, filter) {
+  function nodeMatches(node, query, filter, domain) {
     const text = [node.title, node.chapterTitle, node.overview, node.query, ...(node.objectives || []), ...(node.keyPoints || [])].join(" ").toLowerCase();
-    return (!query || text.includes(query)) && (filter === "all" || statusOf(node) === filter);
+    return (!query || text.includes(query)) && (filter === "all" || statusOf(node) === filter) && (domain === "all" || node.domain === domain);
   }
 
   function renderProgressSummary() {
-    const stats = completionStats();
-    $("#knowledge-progress-summary").innerHTML = '<div class="knowledge-progress-numbers"><strong>' + stats.percent + '%</strong><span>整体掌握</span><small>' + stats.mastered + ' / ' + stats.total + ' 个节点</small></div><div class="knowledge-progress-bar"><i style="width:' + stats.percent + '%"></i></div><div class="knowledge-progress-meta"><span>已开始 ' + stats.started + '</span><span>剩余 ' + (stats.total - stats.mastered) + '</span></div>';
+    const stats = completionStats(activeDomain);
+    const started = stats.started;
+    const mastered = stats.mastered;
+    const percent = stats.percent;
+    const label = activeDomain === "all" ? "整体掌握" : (domainLabels[activeDomain] || "方向") + "掌握";
+    $("#knowledge-progress-summary").innerHTML = '<div class="knowledge-progress-numbers"><strong>' + percent + '%</strong><span>' + label + '</span><small>' + mastered + ' / ' + stats.total + ' 个节点</small></div><div class="knowledge-progress-bar"><i style="width:' + percent + '%"></i></div><div class="knowledge-progress-meta"><span>已开始 ' + started + '</span><span>剩余 ' + (stats.total - mastered) + '</span></div>';
   }
 
   function renderTree() {
@@ -105,7 +161,7 @@
     const filterButton = $(".knowledge-filter.is-active");
     const filter = filterButton ? filterButton.dataset.knowledgeFilter : "all";
     const html = chapters.map((chapter) => {
-      const visible = chapter.nodes.filter((node) => nodeMatches({ ...node, chapterTitle: chapter.title }, query, filter));
+      const visible = chapter.nodes.filter((node) => nodeMatches({ ...node, chapterTitle: chapter.title, domain: node.domain || domainByChapter[chapter.title] }, query, filter, activeDomain));
       if (!visible.length) return "";
       const chapterDone = chapter.nodes.filter((node) => statusOf(node) === "mastered").length;
       const open = chapter.id === activeChapterId || Boolean(query) || filter !== "all";
@@ -117,13 +173,7 @@
       chapter.classList.toggle("is-open");
       activeChapterId = button.dataset.knowledgeChapter;
     }));
-    $$("[data-knowledge-node]").forEach((button) => button.addEventListener("click", () => {
-      activeNodeId = button.dataset.knowledgeNode;
-      const node = nodes.find((item) => item.id === activeNodeId);
-      activeChapterId = node ? node.chapterId : activeChapterId;
-      renderTree();
-      renderLesson();
-    }));
+    $$("[data-knowledge-node]", $("#knowledge-tree-list")).forEach((button) => button.addEventListener("click", () => selectNode(button.dataset.knowledgeNode)));
   }
 
   function renderFormula(formula) {
@@ -145,10 +195,12 @@
     const node = nodes.find((item) => item.id === activeNodeId) || nodes[0];
     if (!node) return;
     const status = statusOf(node);
-    const stats = completionStats();
+    const stats = completionStats(activeDomain);
     const prerequisiteNodes = (node.prerequisites || []).map((id) => nodes.find((item) => item.id === id)).filter(Boolean);
-    const nextNode = nodes[nodes.findIndex((item) => item.id === node.id) + 1];
-    $("#knowledge-lesson").innerHTML = '<header class="knowledge-lesson-heading"><div><p class="section-index">' + escapeHtml(node.chapterTitle) + ' · ' + escapeHtml(node.type) + '</p><h2>' + escapeHtml(node.title) + '</h2><p>' + formatText(node.overview) + '</p></div><div class="knowledge-lesson-meta"><span class="knowledge-status is-' + status + '">' + statusLabel(status) + '</span><small>整体进度 ' + stats.percent + '%</small></div></header><div class="knowledge-lesson-actions"><button type="button" class="primary-button" data-knowledge-status="learning">开始学习</button><button type="button" class="secondary-button" data-knowledge-status="mastered">标记已掌握</button><button type="button" class="secondary-button" data-knowledge-action="practice">进入专项练习</button>' + (node.tool ? '<button type="button" class="secondary-button" data-knowledge-action="tool">打开计算器</button>' : "") + '</div><div class="knowledge-prerequisites"><strong>学习路径</strong><span>' + (prerequisiteNodes.length ? prerequisiteNodes.map((item) => '<button type="button" data-knowledge-node="' + escapeHtml(item.id) + '">' + escapeHtml(item.title) + '</button>').join('<i>→</i>') : "无前置节点，可直接开始") + '</span></div><div class="knowledge-lesson-grid"><section class="knowledge-section"><div class="knowledge-section-heading"><span>学习目标</span><small>完成后应能独立作答</small></div><ul>' + (node.objectives || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ul></section><section class="knowledge-section"><div class="knowledge-section-heading"><span>核心辨析</span><small>概念、边界与得分点</small></div><ul>' + (node.keyPoints || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ul></section></div><section class="knowledge-section knowledge-formula-section"><div class="knowledge-section-heading"><span>核心公式</span><small>点击公式下方说明理解适用条件</small></div><div class="knowledge-formula-list">' + (node.formulas || []).map(renderFormula).join("") + '</div></section><section class="knowledge-section"><div class="knowledge-section-heading"><span>标准解题流程</span><small>考试书写顺序</small></div><ol class="knowledge-method-list">' + (node.method || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ol></section><section class="knowledge-section knowledge-pitfalls"><div class="knowledge-section-heading"><span>常见失分点</span><small>做题后逐条自检</small></div><ul>' + (node.pitfalls || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ul></section>' + renderExample(node.example) + renderResources(node) + '<footer class="knowledge-next"><button type="button" class="secondary-button" data-knowledge-action="previous">上一个知识点</button><span>节点 ' + (nodes.findIndex((item) => item.id === node.id) + 1) + ' / ' + nodes.length + '</span><button type="button" class="secondary-button" data-knowledge-action="next">下一个知识点</button></footer>';
+    const scopedNodes = domainNodes();
+    const nodeIndex = scopedNodes.findIndex((item) => item.id === node.id);
+    const progressLabel = activeDomain === "all" ? "整体进度" : domainLabels[activeDomain] + "进度";
+    $("#knowledge-lesson").innerHTML = '<header class="knowledge-lesson-heading"><div><p class="section-index">' + escapeHtml(node.chapterTitle) + ' · ' + escapeHtml(node.type) + '</p><h2>' + escapeHtml(node.title) + '</h2><p>' + formatText(node.overview) + '</p></div><div class="knowledge-lesson-meta"><span class="knowledge-status is-' + status + '">' + statusLabel(status) + '</span><small>' + progressLabel + ' ' + stats.percent + '%</small></div></header><div class="knowledge-lesson-actions"><button type="button" class="primary-button" data-knowledge-status="learning">开始学习</button><button type="button" class="secondary-button" data-knowledge-status="mastered">标记已掌握</button><button type="button" class="secondary-button" data-knowledge-action="practice">进入专项练习</button>' + (node.tool ? '<button type="button" class="secondary-button" data-knowledge-action="tool">打开计算器</button>' : "") + '</div><div class="knowledge-prerequisites"><strong>学习路径</strong><span>' + (prerequisiteNodes.length ? prerequisiteNodes.map((item) => '<button type="button" data-knowledge-node="' + escapeHtml(item.id) + '">' + escapeHtml(item.title) + '</button>').join('<i>→</i>') : "无前置节点，可直接开始") + '</span></div><div class="knowledge-lesson-grid"><section class="knowledge-section"><div class="knowledge-section-heading"><span>学习目标</span><small>完成后应能独立作答</small></div><ul>' + (node.objectives || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ul></section><section class="knowledge-section"><div class="knowledge-section-heading"><span>核心辨析</span><small>概念、边界与得分点</small></div><ul>' + (node.keyPoints || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ul></section></div><section class="knowledge-section knowledge-formula-section"><div class="knowledge-section-heading"><span>核心公式</span><small>点击公式下方说明理解适用条件</small></div><div class="knowledge-formula-list">' + (node.formulas || []).map(renderFormula).join("") + '</div></section><section class="knowledge-section"><div class="knowledge-section-heading"><span>标准解题流程</span><small>考试书写顺序</small></div><ol class="knowledge-method-list">' + (node.method || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ol></section><section class="knowledge-section knowledge-pitfalls"><div class="knowledge-section-heading"><span>常见失分点</span><small>做题后逐条自检</small></div><ul>' + (node.pitfalls || []).map((item) => '<li>' + formatText(item) + '</li>').join("") + '</ul></section>' + renderExample(node.example) + renderResources(node) + '<footer class="knowledge-next"><button type="button" class="secondary-button" data-knowledge-action="previous"' + (nodeIndex <= 0 ? ' disabled' : '') + '>上一个知识点</button><span>节点 ' + (nodeIndex + 1) + ' / ' + scopedNodes.length + '</span><button type="button" class="secondary-button" data-knowledge-action="next"' + (nodeIndex >= scopedNodes.length - 1 ? ' disabled' : '') + '>下一个知识点</button></footer>';
     renderMath($("#knowledge-lesson"));
     bindLessonActions(node);
   }
@@ -161,22 +213,14 @@
       renderTree();
       renderLesson();
     }));
-    $$('[data-knowledge-node]').forEach((button) => button.addEventListener("click", () => {
-      activeNodeId = button.dataset.knowledgeNode;
-      const target = nodes.find((item) => item.id === activeNodeId);
-      if (target) activeChapterId = target.chapterId;
-      renderTree();
-      renderLesson();
-    }));
+    $$('[data-knowledge-node]', $("#knowledge-lesson")).forEach((button) => button.addEventListener("click", () => selectNode(button.dataset.knowledgeNode)));
     $$('[data-knowledge-action]').forEach((button) => button.addEventListener("click", () => {
       const action = button.dataset.knowledgeAction;
-      const index = nodes.findIndex((item) => item.id === node.id);
       if (action === "next" || action === "previous") {
-        const target = nodes[(index + (action === "next" ? 1 : -1) + nodes.length) % nodes.length];
-        activeNodeId = target.id;
-        activeChapterId = target.chapterId;
-        renderTree();
-        renderLesson();
+        const scopedNodes = domainNodes();
+        const index = scopedNodes.findIndex((item) => item.id === node.id);
+        const target = scopedNodes[index + (action === "next" ? 1 : -1)];
+        if (target) selectNode(target.id);
       } else if (action === "practice") {
         const bankButton = $('[data-tool="question-bank"]');
         if (bankButton) bankButton.click();
@@ -199,13 +243,14 @@
     if (!nodes.length || !$("#module-nav") || !$(".platform-main")) return;
     addView();
     $("#knowledge-search").addEventListener("input", renderTree);
+    $$('[data-knowledge-domain]').forEach((button) => button.addEventListener("click", () => {
+      selectDomain(button.dataset.knowledgeDomain);
+    }));
     $$("[data-knowledge-filter]").forEach((button) => button.addEventListener("click", () => {
       $$("[data-knowledge-filter]").forEach((item) => item.classList.toggle("is-active", item === button));
       renderTree();
     }));
-    renderProgressSummary();
-    renderTree();
-    renderLesson();
+    selectDomain("all");
   }
 
   init();

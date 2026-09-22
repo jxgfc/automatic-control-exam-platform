@@ -476,7 +476,10 @@
     const openLoop = rightHalfPlaneRootCount(bode.denominator);
     const closedLoopPolynomial = Solver.add(bode.denominator, bode.numerator);
     const closedLoop = rightHalfPlaneRootCount(closedLoopPolynomial);
-    const clockwiseEncirclements = openLoop.rightHalfPlane - closedLoop.rightHalfPlane;
+    // P - Z is the net counterclockwise encirclement count for this contour.
+    // Keep the old field as an inverse-sign compatibility alias.
+    const counterclockwiseEncirclements = openLoop.rightHalfPlane - closedLoop.rightHalfPlane;
+    const clockwiseEncirclements = counterclockwiseEncirclements === 0 ? 0 : -counterclockwiseEncirclements;
     const closedLoopPoints = bode.points.map((point) => {
       const denominatorReal = 1 + point.real;
       const denominatorImaginary = point.imaginary;
@@ -505,6 +508,7 @@
       openLoopRightHalfPlanePoles: openLoop.rightHalfPlane,
       imaginaryAxisOpenLoopPoles: openLoop.imaginaryAxis,
       closedLoopRightHalfPlanePoles: closedLoop.rightHalfPlane,
+      counterclockwiseEncirclements,
       clockwiseEncirclements,
       closedLoopStable: closedLoop.rightHalfPlane === 0 && closedLoop.imaginaryAxis === 0,
       closedLoopPoints,

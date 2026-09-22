@@ -1,7 +1,20 @@
 (function () {
   "use strict";
   const $ = (selector) => document.querySelector(selector);
+
+  function safeNextPath(value) {
+    const candidateValue = String(value || "");
+    if (!candidateValue.startsWith("/") || /[\\\u0000-\u0020\u007f]/.test(candidateValue)) return "/";
+    try {
+      const destination = new URL(candidateValue, window.location.origin);
+      if (!["http:", "https:"].includes(destination.protocol) || destination.origin !== window.location.origin || destination.username || destination.password) return "/";
+      return destination.pathname + destination.search + destination.hash;
+    } catch (_) { return "/"; }
+  }
+  if (typeof window !== "undefined") window.ControlAuthGate = { safeNextPath };
+
   const form = $("#gate-form");
+  if (!form) return;
   const title = $("#title");
   const submit = $("#submit");
   const toggle = $("#toggle");
@@ -11,6 +24,7 @@
   const status = $("#status");
   const next = new URLSearchParams(window.location.search).get("next") || "/";
   let mode = "login";
+
 
   function render() {
     const register = mode === "register";
@@ -36,7 +50,7 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "账号操作失败");
-      window.location.replace(next.startsWith("/") ? next : "/");
+      window.location.replace(safeNextPath(next));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "账号服务暂时不可用");
       status.textContent = "";

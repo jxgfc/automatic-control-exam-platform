@@ -10,7 +10,7 @@
     { chapter: "时域分析", topic: "系统稳定条件与劳斯稳定判据", schools: ["828", "861"], kind: "计算", status: "available", tool: "routh" },
     { chapter: "时域分析", topic: "一阶系统特征参数与动态性能", schools: ["828", "861"], kind: "计算", status: "available", tool: "second-order" },
     { chapter: "时域分析", topic: "典型二阶系统动态指标与极点", schools: ["828", "861"], kind: "计算", status: "available", tool: "second-order" },
-    { chapter: "时域分析", topic: "附加闭环零极点、主导极点与高阶系统近似", schools: ["861"], kind: "分析", status: "available", tool: "second-order" },
+    { chapter: "时域分析", topic: "极点分布、附加闭环零极点、主导极点与高阶系统近似", schools: ["861"], kind: "分析", status: "available", tool: "second-order", coverage: { "828": "大纲明确极点分布与控制性能关系；主导极点和高阶近似作为拓展", "861": "明确覆盖附加闭环零极点、主导极点和高阶系统近似" } },
     { chapter: "稳态误差", topic: "系统型别、静态误差系数与典型输入稳态误差", schools: ["828", "861"], kind: "计算", status: "available", tool: "steady-error" },
     { chapter: "稳态误差", topic: "扰动作用、误差传递函数与复合控制误差", schools: ["828", "861"], kind: "计算", status: "available", tool: "steady-error" },
     { chapter: "根轨迹", topic: "根轨迹方程、幅值条件、相角条件与绘制规则", schools: ["861"], kind: "计算", status: "available", tool: "root-locus" },

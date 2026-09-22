@@ -2396,6 +2396,33 @@ footer {
   border: 1px solid var(--line);
 }
 
+.knowledge-domain-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 14px 0 8px;
+  border: 1px solid var(--line);
+}
+
+.knowledge-domain {
+  min-height: 30px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--paper);
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.knowledge-domain:last-child {
+  border-right: 0;
+}
+
+.knowledge-domain.is-active {
+  color: #fff;
+  background: var(--green-dark);
+}
+
 .knowledge-filter {
   min-height: 30px;
   border: 0;

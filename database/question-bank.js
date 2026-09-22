@@ -71,9 +71,10 @@ function createMemoryRepository() {
   return {
     mode: "memory",
     async initialize() {},
+    async checkHealth() { return true; },
     async list(filters) {
       const values = [...rows.values()].filter((row) => matches(row, filters));
-      values.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      values.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt) || (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
       return paginate(values, filters);
     },
     async insert(input) {
@@ -128,6 +129,8 @@ function createPostgresRepository(databaseUrl) {
     connectionTimeoutMillis: 10000,
     ssl: process.env.NODE_ENV === "production" && process.env.PGSSLMODE !== "disable" ? { rejectUnauthorized: false } : undefined
   });
+  // Recover from idle connection errors through the next query/health probe.
+  pool.on("error", () => {});
   return {
     mode: "postgres",
     async initialize() {
@@ -153,6 +156,10 @@ function createPostgresRepository(databaseUrl) {
         CREATE INDEX IF NOT EXISTS ai_question_bank_difficulty_idx ON ai_question_bank(difficulty);
       `);
     },
+    async checkHealth() {
+      await pool.query({ text: "SELECT 1", query_timeout: 3000 });
+      return true;
+    },
     async list(filters) {
       const f = filters || {};
       const where = [];
@@ -168,7 +175,7 @@ function createPostgresRepository(databaseUrl) {
       const count = await pool.query("SELECT COUNT(*)::int AS total FROM ai_question_bank " + condition, params);
       const limit = Math.max(1, Math.min(100, Number(f.limit) || 50));
       const offset = Math.max(0, Number(f.offset) || 0);
-      const result = await pool.query("SELECT id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, created_at AS \"createdAt\", updated_at AS \"updatedAt\", fingerprint FROM ai_question_bank " + condition + " ORDER BY created_at DESC LIMIT $" + (params.length + 1) + " OFFSET $" + (params.length + 2), [...params, limit, offset]);
+      const result = await pool.query("SELECT id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, created_at AS \"createdAt\", updated_at AS \"updatedAt\", fingerprint FROM ai_question_bank " + condition + " ORDER BY created_at DESC, id DESC LIMIT $" + (params.length + 1) + " OFFSET $" + (params.length + 2), [...params, limit, offset]);
       return { items: result.rows.map(publicQuestion), total: count.rows[0].total, limit, offset };
     },
     async insert(input) {
@@ -210,7 +217,7 @@ function createQuestionBankService(options) {
   else if (settings.useMemory === true || (settings.useMemory !== false && process.env.NODE_ENV !== "production")) repository = createMemoryRepository();
   else repository = null;
   let initializationError = null;
-  const ready = repository ? Promise.resolve(repository.initialize()).catch((error) => { initializationError = error; }) : Promise.resolve();
+  const ready = repository ? Promise.resolve(repository.initialize()).then(() => true).catch((error) => { initializationError = error; return false; }) : Promise.resolve(false);
   async function ensureReady() {
     await ready;
     if (!repository) { const error = new Error("题库数据库未配置"); error.status = 503; error.code = "QUESTION_BANK_NOT_CONFIGURED"; throw error; }
@@ -220,6 +227,11 @@ function createQuestionBankService(options) {
     mode: repository ? repository.mode : "unconfigured",
     configured: Boolean(repository),
     ready,
+    checkHealth: async () => {
+      await ready;
+      if (!repository || initializationError || typeof repository.checkHealth !== "function") return false;
+      try { return Boolean(await repository.checkHealth()); } catch (_) { return false; }
+    },
     list: async (filters) => { await ensureReady(); return repository.list(filters); },
     insert: async (input) => { await ensureReady(); return repository.insert(input); },
     update: async (id, input) => { await ensureReady(); return repository.update(id, input); },

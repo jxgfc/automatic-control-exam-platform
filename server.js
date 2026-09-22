@@ -19,6 +19,7 @@ const MIME_TYPES = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".md": "text/plain; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
@@ -26,6 +27,75 @@ const MIME_TYPES = {
   ".woff2": "font/woff2",
   ".ttf": "font/ttf"
 };
+
+const PUBLIC_ROOT_FILES = new Set([
+  "index.html", "login.html", "admin.html", "styles.css",
+  "app.js", "account.js", "advanced-core.js", "advanced-platform.js", "control-core.js", "solver.js",
+  "syllabus-data.js", "theory-data.js", "question-bank-data.js", "knowledge-tree-data.js",
+  "platform.js", "ai-question-bank.js", "knowledge-tree.js", "site-profile.js", "personal-home.js",
+  "admin.js", "auth-gate.js", "calculator-root-locus-desktop.png", "PERSONAL-SITE.md"
+]);
+const PUBLIC_VENDOR_FILES = new Set([
+  "/vendor/katex/node_modules/katex/dist/katex.min.js",
+  "/vendor/katex/node_modules/katex/dist/katex.min.css",
+  "/vendor/katex/node_modules/katex/dist/contrib/auto-render.min.js"
+]);
+const KATEX_FONT_DIRECTORY = "/vendor/katex/node_modules/katex/dist/fonts/";
+try {
+  for (const entry of fs.readdirSync(path.join(ROOT, KATEX_FONT_DIRECTORY), { withFileTypes: true })) {
+    if (entry.isFile() && /^KaTeX_[A-Za-z0-9-]+\.(?:woff2?|ttf)$/.test(entry.name)) {
+      PUBLIC_VENDOR_FILES.add(KATEX_FONT_DIRECTORY + entry.name);
+    }
+  }
+} catch (_) { /* A reduced offline bundle can omit KaTeX fonts. */ }
+
+function parseRequestUrl(target) {
+  const raw = String(target || "");
+  // Parse the raw path before URL normalization can remove encoded dot segments.
+  if (!raw.startsWith("/") || raw.startsWith("//") || /[\\#\u0000-\u001f\u007f]/.test(raw)) throw new Error("Invalid path");
+  const queryStart = raw.indexOf("?");
+  const pathname = decodeURIComponent(queryStart < 0 ? raw : raw.slice(0, queryStart));
+  if (/[\\%?#\u0000-\u001f\u007f]/.test(pathname) || path.posix.normalize(pathname) !== pathname) throw new Error("Invalid path");
+  const parsed = new URL(raw, "http://localhost");
+  return { pathname: pathname === "/" ? "/index.html" : pathname, searchParams: parsed.searchParams };
+}
+
+function createHealthProbe(authService, questionBank, requireActivation, cacheMs) {
+  const ttl = Number.isFinite(cacheMs) && cacheMs >= 0 ? cacheMs : 15000;
+  let cached;
+  let expiresAt = 0;
+  let pending;
+  const check = async (service) => {
+    if (!service || !service.configured) return false;
+    let timer;
+    try {
+      return Boolean(await Promise.race([
+        service.checkHealth(),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), 5000); })
+      ]));
+    } catch (_) {
+      return false;
+    } finally { clearTimeout(timer); }
+  };
+  return async () => {
+    if (cached && Date.now() < expiresAt) return cached;
+    if (!pending) {
+      pending = Promise.all([check(authService), check(questionBank)]).then(([authReady, questionBankReady]) => {
+        const authConfigured = Boolean(authService && authService.configured);
+        const bankConfigured = Boolean(questionBank && questionBank.configured);
+        cached = {
+          ok: (!authConfigured || authReady) && (!bankConfigured || questionBankReady) && (!requireActivation || authReady),
+          authReady,
+          questionBankReady,
+          databaseReady: authReady && questionBankReady
+        };
+        expiresAt = Date.now() + ttl;
+        return cached;
+      }).finally(() => { pending = null; });
+    }
+    return pending;
+  };
+}
 
 function sendJson(response, status, value) {
   const body = JSON.stringify(value);
@@ -547,8 +617,13 @@ async function requestAiQuestions(input, fetchImplementation) {
 }
 
 function serveStatic(request, response, pathname) {
-  let relativePath;
-  try { relativePath = decodeURIComponent(pathname === "/" ? "/index.html" : pathname); } catch (_) { response.writeHead(400); response.end(); return; }
+  const relativePath = pathname === "/" ? "/index.html" : pathname;
+  const publicRootFile = relativePath.startsWith("/") ? relativePath.slice(1) : relativePath;
+  if (!PUBLIC_ROOT_FILES.has(publicRootFile) && !PUBLIC_VENDOR_FILES.has(relativePath)) {
+    response.writeHead(404);
+    response.end("Not found");
+    return;
+  }
   const filePath = path.resolve(ROOT, "." + relativePath);
   if (!filePath.startsWith(ROOT + path.sep)) { response.writeHead(403); response.end(); return; }
   fs.stat(filePath, (error, stats) => {
@@ -562,7 +637,8 @@ function serveStatic(request, response, pathname) {
       "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
       "Cache-Control": "no-cache"
     });
-    fs.createReadStream(filePath).pipe(response);
+    if (request.method === "HEAD") { response.end(); return; }
+    fs.createReadStream(filePath).on("error", () => response.destroy()).pipe(response);
   });
 }
 
@@ -583,6 +659,8 @@ function createAppServer(options) {
   const loginLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
   const registerLimiter = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
   const aiLimiter = createRateLimiter({ limit: 8, windowMs: 10 * 60 * 1000 });
+  const modelsLimiter = createRateLimiter({ limit: 20, windowMs: 10 * 60 * 1000 });
+  const probeHealth = createHealthProbe(authService, questionBank, requireActivation, settings.healthCacheMs);
   const currentUser = async (request) => authService && authService.configured
     ? authService.userFromToken(auth.requestSessionToken(request))
     : null;
@@ -609,16 +687,25 @@ function createAppServer(options) {
     }
   };
   return http.createServer(async (request, response) => {
-    const host = request.headers.host || "127.0.0.1";
     let url;
-    try { url = new URL(request.url, "http://" + host); } catch (_) { response.writeHead(400); response.end(); return; }
+    try {
+      url = parseRequestUrl(request.url);
+    } catch (_) {
+      response.writeHead(400);
+      response.end("Invalid path");
+      return;
+    }
     if (request.method === "GET" && url.pathname === "/api/health") {
-      sendJson(response, 200, {
-        ok: true,
+      const health = await probeHealth();
+      sendJson(response, health.ok ? 200 : 503, {
+        ok: health.ok,
         aiProxy: true,
         version: "activation-codes-v1",
         auth: Boolean(authService && authService.configured),
         questionBank: Boolean(questionBank && questionBank.configured),
+        authReady: health.authReady,
+        questionBankReady: health.questionBankReady,
+        databaseReady: health.databaseReady,
         adminConfigured: Boolean(adminUsername || adminUserId),
         requireActivation
       });
@@ -788,6 +875,10 @@ function createAppServer(options) {
     }
     if (request.method === "GET" && url.pathname === "/api/question-bank") {
       try {
+        if (requireActivation && !(await currentUser(request))) {
+          sendJson(response, 401, { error: "请先登录后读取题库", code: "LOGIN_REQUIRED" });
+          return;
+        }
         if (!questionBank) throw Object.assign(new Error("题库服务不可用"), { status: 503, code: "QUESTION_BANK_UNAVAILABLE" });
         const result = await questionBank.list({
           search: url.searchParams.get("search") || "",
@@ -830,6 +921,12 @@ function createAppServer(options) {
           sendJson(response, 401, { error: "请先登录后读取模型", code: "LOGIN_REQUIRED" });
           return;
         }
+        const modelsRate = modelsLimiter(clientRateLimitKey(request));
+        if (!modelsRate.allowed) {
+          response.setHeader("Retry-After", String(modelsRate.retryAfter));
+          sendJson(response, 429, { error: "读取模型过于频繁，请稍后再试。", code: "RATE_LIMITED", retryAfter: modelsRate.retryAfter });
+          return;
+        }
         const body = await readJson(request);
         const models = await requestAiModels(body, settings.fetch);
         sendJson(response, 200, { models });
@@ -851,7 +948,7 @@ function createAppServer(options) {
         return;
       }
     }
-    if (requireActivation && (url.pathname === "/" || url.pathname === "/index.html")) {
+    if (requireActivation && url.pathname === "/index.html") {
       try {
         if (!(await currentUser(request))) {
           serveStatic(request, response, "/login.html");

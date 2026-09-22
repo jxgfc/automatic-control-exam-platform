@@ -6,9 +6,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node control-core.test.js && node advanced-core.test.js && node solver.test.js && node server.test.js && node auth-question-bank.test.js && node formula-render.test.js",
+    "test": "node control-core.test.js && node advanced-core.test.js && node solver.test.js && node server.test.js && node auth-question-bank.test.js && node formula-render.test.js && node curriculum.test.js",
     "test:server": "node server.test.js",
-    "test:browser": "node ui.smoke.test.js && node ai-ui.test.js",
+    "test:browser": "node ui.smoke.test.js && node ai-ui.test.js && node knowledge-tree.test.js && node personal-home.test.js",
+    "test:cloud": "node cloud-question-bank.test.js",
     "check:production": "node utils/production-smoke.js"
   },
   "dependencies": {

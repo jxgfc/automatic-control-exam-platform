@@ -20,6 +20,9 @@
   const ATTEMPTS_KEY = "control-question-attempts-v2";
   const SETTINGS_KEY = "control-ai-settings-v1";
   let cloudQuestions = [];
+  let cloudQuestionTotal = 0;
+  let cloudQuestionLoadError = "";
+  let cloudQuestionLoading = false;
 
   const providerPresets = {
     openai: { baseUrl: "https://api.openai.com/v1", model: "gpt-5-mini", protocol: "responses", authMode: "bearer" },
@@ -203,17 +206,59 @@
   }
 
   async function loadCloudQuestions() {
-    if (window.location.protocol === "file:") return;
+    if (window.location.protocol === "file:" || cloudQuestionLoading) return;
+    cloudQuestionLoading = true;
+    const loaded = [];
+    let total = 0;
+    let accessDenied = false;
+    cloudQuestionLoadError = "";
+    if ($("#bank-source-cloud")) $("#bank-source-cloud").textContent = "云端AI题库（正在读取…）";
     try {
-      const response = await fetch("/api/question-bank?limit=100", { cache: "no-store" });
-      if (!response.ok) return;
-      const payload = await response.json();
-      cloudQuestions = (payload.items || []).map((item, index) => normalizeQuestion({ ...item, source: item.source || "云端AI题库" }, index)).filter((item) => item.question && item.answer);
-      if ($("#bank-source-cloud")) $("#bank-source-cloud").textContent = "云端AI题库（" + cloudQuestions.length + "题）";
+      const pageSize = 100;
+      const maxQuestions = 2000;
+      for (let offset = 0; offset < maxQuestions; offset += pageSize) {
+        const response = await fetch("/api/question-bank?limit=" + pageSize + "&offset=" + offset, { cache: "no-store" });
+        if (!response.ok) {
+          accessDenied = response.status === 401 || response.status === 403;
+          throw new Error(response.status === 401 ? "登录后才能读取云端题库" : response.status === 403 ? "当前账号无权读取云端题库" : "云端题库暂时不可用，请刷新重试");
+        }
+        const payload = await response.json();
+        if (!payload || !Array.isArray(payload.items)) throw new Error("云端题库数据格式异常，请刷新重试");
+        const items = payload.items.slice(0, pageSize);
+        const reportedTotal = Number(payload.total);
+        if (Number.isFinite(reportedTotal) && reportedTotal >= 0) total = Math.max(total, reportedTotal);
+        loaded.push(...items);
+        if (items.length < pageSize) {
+          if (loaded.length < total) throw new Error("云端题库读取不完整，请刷新重试");
+          break;
+        }
+        if (total > 0 && loaded.length >= total) break;
+      }
+    } catch (error) {
+      cloudQuestionLoadError = error instanceof Error ? error.message : "云端题库读取失败，请刷新重试";
+    } finally {
+      // Preserve successful pages on a transient failure, but never retain data after an access denial.
+      const available = accessDenied ? [] : loaded;
+      const unique = new Map();
+      available.forEach((item, index) => {
+        if (!item || typeof item !== "object") return;
+        const question = normalizeQuestion({ ...item, source: item.source || "云端AI题库" }, index);
+        if (!question.question || !question.answer) return;
+        const key = [question.question, question.answer].join("\n");
+        if (!unique.has(key)) unique.set(key, question);
+      });
+      cloudQuestions = [...unique.values()];
+      cloudQuestionTotal = accessDenied ? 0 : Math.max(total, available.length);
+      const countText = cloudQuestionTotal > available.length || available.length !== cloudQuestions.length
+        ? "已读取 " + available.length + "/" + cloudQuestionTotal + " 条，可练习 " + cloudQuestions.length + " 题"
+        : cloudQuestions.length + "题";
+      const labelText = cloudQuestionLoadError
+        ? (cloudQuestions.length ? countText + "；部分加载：" : "读取失败：") + cloudQuestionLoadError
+        : countText;
+      if ($("#bank-source-cloud")) $("#bank-source-cloud").textContent = "云端AI题库（" + labelText + "）";
+      cloudQuestionLoading = false;
       updateStats();
       if (queue.length === 0) renderQuestion();
-    } catch (_) {
-      cloudQuestions = [];
     }
   }
 
