@@ -1110,6 +1110,43 @@ footer {
   display: none !important;
 }
 
+.question-calculator-context,
+.question-context-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  margin: 14px 0;
+  border: 1px solid rgba(23, 107, 77, .18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(231, 247, 239, .92), rgba(247, 251, 249, .9));
+}
+.question-calculator-context strong,
+.question-context-banner > span { display: block; color: #176b4d; font-size: .78rem; letter-spacing: .04em; }
+.question-calculator-context span,
+.question-context-banner p { margin: 3px 0 0; color: #60736b; font-size: .82rem; }
+.question-calculator-context.is-unavailable { border-color: rgba(145, 104, 35, .2); background: #fffaf0; }
+.question-calculator-context.is-unavailable strong { color: #916823; }
+.question-context-banner { margin: 0 0 18px; align-items: flex-start; flex-wrap: wrap; }
+.question-context-banner p { flex: 1 1 100%; max-width: 78ch; line-height: 1.65; }
+.question-visual { margin: 16px 0; padding: 14px; border: 1px solid #e1e9e4; border-radius: 16px; background: #fbfdfc; overflow: hidden; }
+.question-visual-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #24463a; }
+.question-visual-heading span { color: #7b8c86; font-size: .76rem; }
+.question-plot-viewport { max-width: 100%; overflow: auto; border-radius: 10px; background: #fff; cursor: zoom-in; }
+.question-plot-svg { display: block; width: 100%; min-width: 520px; height: auto; transform-origin: center; transition: transform .12s ease-out; }
+.question-plot-axis { stroke: #a9b8b1; stroke-width: 1; }
+.question-plot-line { fill: none; stroke: #176b4d; stroke-width: 2; }
+.question-plot-point { cursor: pointer; stroke: #b3403b; stroke-width: 1.5; fill: #fff; }
+.question-plot-point[data-point-info] { pointer-events: all; }
+.question-plot-info { min-height: 20px; margin-top: 8px; color: #536a60; font-size: .8rem; }
+.question-visual-unavailable { margin: 14px 0; padding: 12px; color: #916823; border: 1px dashed #d8c18f; border-radius: 12px; background: #fffaf0; }
+@media (max-width: 680px) {
+  .question-calculator-context { align-items: flex-start; flex-direction: column; }
+  .question-visual-heading { align-items: flex-start; flex-direction: column; }
+  .question-plot-svg { min-width: 460px; }
+}
+
 .tool-titlebar {
   min-height: 65px;
   display: flex;
@@ -1391,6 +1428,129 @@ footer {
   height: 35px;
   border: 0;
   background: transparent;
+}
+
+/* Shared expression keypad used by every compact transfer-function field. */
+.compact-transfer-input label {
+  grid-template-columns: 32px minmax(0, 1fr) 30px;
+  gap: 5px;
+}
+
+.compact-transfer-input label input {
+  min-width: 0;
+}
+
+.transfer-keypad-trigger {
+  width: 30px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--green-dark);
+  background: var(--green-pale);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.transfer-keypad-trigger:hover,
+.transfer-keypad-trigger:focus-visible {
+  border-color: var(--green);
+  background: #dff2e9;
+  outline: 2px solid rgba(23, 107, 77, .2);
+  outline-offset: 1px;
+}
+
+.transfer-keypad-popover {
+  position: fixed;
+  z-index: 1000;
+  padding: 10px;
+  border: 1px solid #b8ccc2;
+  border-radius: 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 16px 42px rgba(35, 60, 50, .2);
+  backdrop-filter: blur(12px);
+}
+
+.transfer-keypad-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 9px;
+  font-size: 11px;
+}
+
+.transfer-keypad-head strong {
+  color: var(--green-dark);
+  font-size: 13px;
+}
+
+.transfer-keypad-head span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.transfer-keypad-head button {
+  width: 25px;
+  height: 25px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--soft);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.transfer-keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.transfer-keypad-grid button {
+  min-height: 36px;
+  padding: 0 5px;
+  border: 1px solid #d2dfd9;
+  border-radius: 7px;
+  color: var(--ink);
+  background: #f8fbf9;
+  font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.transfer-keypad-grid button:hover,
+.transfer-keypad-grid button:focus-visible {
+  border-color: var(--green);
+  color: var(--green-dark);
+  background: var(--green-pale);
+  outline: none;
+}
+
+.transfer-keypad-grid .tkp-command {
+  color: #965047;
+  background: #fff5f3;
+}
+
+.transfer-keypad-grid .tkp-variable {
+  color: var(--blue);
+  font-family: Cambria, "Times New Roman", serif;
+  font-size: 17px;
+}
+
+.transfer-keypad-grid .tkp-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 520px) {
+  .transfer-keypad-popover {
+    position: fixed;
+    left: 12px !important;
+    right: 12px;
+    width: auto !important;
+  }
 }
 
 .compact-transfer-input .fraction-rule {
@@ -4003,4 +4163,64 @@ footer {
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* Interactive SVG plots: restrained chrome keeps the graph readable while
+   making zooming and point inspection discoverable on desktop and touch. */
+.interactive-plot {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 12px;
+  outline: none;
+  background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.84), rgba(244,250,247,.64));
+}
+.interactive-plot:focus-visible { box-shadow: 0 0 0 3px rgba(15,118,110,.22); }
+.interactive-plot.is-panning { cursor: grabbing; }
+.plot-help {
+  display: block;
+  margin-top: 7px;
+  color: #71837c;
+  font-size: 11px;
+  letter-spacing: .01em;
+  text-align: right;
+}
+.plot-hit-point[data-plot-hit="true"] {
+  fill: transparent;
+  stroke: transparent;
+  opacity: 0;
+  pointer-events: all;
+}
+.plot-hit-point[data-plot-hit="true"]:hover {
+  fill: rgba(15,118,110,.15);
+  stroke: #0f766e;
+  stroke-width: 1.5;
+  opacity: 1;
+}
+.plot-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 9px 11px;
+  border: 1px solid rgba(124,157,145,.5);
+  border-radius: 10px;
+  color: #173d36;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 12px 34px rgba(17,66,53,.18);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+.plot-tooltip strong,
+.plot-tooltip span,
+.plot-tooltip small { display: block; }
+.plot-tooltip strong { color: #0f766e; font-size: 11px; letter-spacing: .06em; }
+.plot-tooltip small { margin-top: 2px; color: #6d8178; font-size: 10px; }
+@media (max-width: 640px) {
+  .plot-help { text-align: left; font-size: 10px; }
+  .interactive-plot { min-height: 150px; }
 }

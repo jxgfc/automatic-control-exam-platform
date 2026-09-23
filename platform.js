@@ -250,12 +250,13 @@
     const mapX = (time) => left + time / maximumTime * (right - left);
     const mapY = (value) => bottom - (value - minValue) / (maxValue - minValue) * (bottom - top);
     const path = samples.map((point, index) => (index ? "L" : "M") + mapX(point.time).toFixed(2) + " " + mapY(point.value).toFixed(2)).join(" ");
+    const pointHits = samples.map((point) => '<circle class="plot-hit-point" data-plot-hit="true" cx="' + mapX(point.time).toFixed(2) + '" cy="' + mapY(point.value).toFixed(2) + '" r="6" data-plot-label="t=' + formatNumber(point.time, 5) + ' s · y=' + formatNumber(point.value, 5) + '" data-plot-x="' + formatNumber(point.time, 6) + ' s" data-plot-y="' + formatNumber(point.value, 6) + '"/>').join("");
     const finalY = mapY(1);
     return '<svg viewBox="0 0 ' + width + " " + height + '" role="img" aria-label="单位阶跃响应曲线">' +
       '<line x1="' + left + '" y1="' + bottom + '" x2="' + right + '" y2="' + bottom + '" stroke="#9aa49f"/>' +
       '<line x1="' + left + '" y1="' + top + '" x2="' + left + '" y2="' + bottom + '" stroke="#9aa49f"/>' +
       '<line x1="' + left + '" y1="' + finalY + '" x2="' + right + '" y2="' + finalY + '" stroke="#b76a18" stroke-dasharray="5 4"/>' +
-      '<path d="' + path + '" fill="none" stroke="#176b4d" stroke-width="2.4"/>' +
+      '<path d="' + path + '" fill="none" stroke="#176b4d" stroke-width="2.4"/>' + pointHits +
       '<text x="' + (left - 8) + '" y="' + (finalY + 4) + '" text-anchor="end" fill="#66716d" font-size="10">1</text>' +
       '<text x="' + right + '" y="' + (bottom + 18) + '" text-anchor="end" fill="#66716d" font-size="10">t = ' + formatNumber(maximumTime, 4) + " s</text></svg>";
   }
@@ -312,6 +313,10 @@
     const mapPhase = (value) => phaseBottom - (value - phaseMin) / (phaseMax - phaseMin) * (phaseBottom - phaseTop);
     const magnitudePath = result.points.map((point, index) => (index ? "L" : "M") + mapX(point.frequency).toFixed(2) + " " + mapMagnitude(point.magnitudeDb).toFixed(2)).join(" ");
     const phasePath = result.points.map((point, index) => (index ? "L" : "M") + mapX(point.frequency).toFixed(2) + " " + mapPhase(point.phase).toFixed(2)).join(" ");
+    const pointHits = result.points.map((point) => {
+      const x = mapX(point.frequency).toFixed(2);
+      return '<circle class="plot-hit-point" data-plot-hit="true" cx="' + x + '" cy="' + mapMagnitude(point.magnitudeDb).toFixed(2) + '" r="6" data-plot-label="ω=' + formatNumber(point.frequency, 5) + ' · 幅值=' + formatNumber(point.magnitudeDb, 5) + ' dB" data-plot-x="' + formatNumber(point.frequency, 6) + '" data-plot-y="' + formatNumber(point.magnitudeDb, 6) + ' dB"/><circle class="plot-hit-point" data-plot-hit="true" cx="' + x + '" cy="' + mapPhase(point.phase).toFixed(2) + '" r="6" data-plot-label="ω=' + formatNumber(point.frequency, 5) + ' · 相位=' + formatNumber(point.phase, 5) + '°" data-plot-x="' + formatNumber(point.frequency, 6) + '" data-plot-y="' + formatNumber(point.phase, 6) + '°"/>';
+    }).join("");
     const parts = [];
 
     for (let decade = Math.ceil(startLog); decade <= Math.floor(endLog); decade += 1) {
@@ -322,7 +327,7 @@
     const minus180Y = mapPhase(-180);
     parts.push('<line x1="' + left + '" y1="' + zeroMagnitudeY + '" x2="' + right + '" y2="' + zeroMagnitudeY + '" stroke="#b76a18" stroke-dasharray="5 4"/>');
     parts.push('<line x1="' + left + '" y1="' + minus180Y + '" x2="' + right + '" y2="' + minus180Y + '" stroke="#b76a18" stroke-dasharray="5 4"/>');
-    parts.push('<path d="' + magnitudePath + '" fill="none" stroke="#176b4d" stroke-width="2.3"/><path d="' + phasePath + '" fill="none" stroke="#326ea8" stroke-width="2.3"/>');
+    parts.push('<path d="' + magnitudePath + '" fill="none" stroke="#176b4d" stroke-width="2.3"/><path d="' + phasePath + '" fill="none" stroke="#326ea8" stroke-width="2.3"/>' + pointHits);
     if (result.gainCrossover) {
       const x = mapX(result.gainCrossover);
       parts.push('<circle cx="' + x + '" cy="' + zeroMagnitudeY + '" r="4.5" fill="#176b4d" stroke="#fff" stroke-width="1.5"/>');

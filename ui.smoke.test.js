@@ -85,6 +85,16 @@ let browser;
 
   await page.locator('[data-tool="frequency"]').click();
   await page.waitForSelector("#frequency-result .bode-plot svg");
+  assert.equal(await page.locator("#frequency-numerator + .transfer-keypad-trigger").count(), 1);
+  await page.locator("#frequency-numerator + .transfer-keypad-trigger").click();
+  await page.waitForFunction(() => {
+    const keypad = document.querySelector(".transfer-keypad-popover");
+    return keypad && !keypad.hidden;
+  });
+  assert.equal(await page.locator(".transfer-keypad-popover").isVisible(), true);
+  await page.locator(".transfer-keypad-grid [data-tkp-value='7']").click();
+  assert.match(await page.locator("#frequency-numerator").inputValue(), /17/);
+  await page.locator(".transfer-keypad-head [data-tkp-action='close']").click();
   assert.match(await page.locator("#frequency-result").innerText(), /51\.827/);
   assert.match(await page.locator("#frequency-result").innerText(), /0\.7861/);
   assert.equal(await page.locator("#frequency-result .bode-plot path").count(), 2);
@@ -92,6 +102,7 @@ let browser;
 
   await page.locator('[data-tool="modeling"]').click();
   await page.waitForSelector("#modeling-result .result-summary-band");
+  assert.equal(await page.locator("#partial-numerator + .transfer-keypad-trigger").count(), 1);
   assert.match(await page.locator("#modeling-result").innerText(), /3 个极点项/);
   assert.match(await page.locator("#modeling-result").innerText(), /拉氏反变换/);
   await page.locator("#modeling-mode").selectOption("mason");

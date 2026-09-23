@@ -200,8 +200,97 @@ Y,A,-2</textarea></label>
       </section>`);
   }
 
+  function calculatorValue(value) {
+    if (Array.isArray(value)) return value.map((row) => Array.isArray(row) ? row.join(",") : row).join(";");
+    return String(value == null ? "" : value);
+  }
+
+  function applyCalculatorInput(selector, value) {
+    const input = $(selector);
+    if (!input || value == null) return false;
+    input.value = calculatorValue(value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  function showQuestionContext(tool, context) {
+    const view = $("#tool-" + tool);
+    if (!view || !context || !context.question) return;
+    const old = $("[data-question-context]", view);
+    if (old) old.remove();
+    const heading = $(".tool-titlebar", view) || view.firstElementChild;
+    if (!heading) return;
+    heading.insertAdjacentHTML("afterend", '<aside class="question-context-banner" data-question-context><span>正在带入题目</span><p>' + escapeHtml(context.question) + '</p><button type="button" class="text-button" data-return-question>返回题库继续作答</button></aside>');
+    const back = $("[data-return-question]", view);
+    if (back) back.addEventListener("click", () => {
+      const questionButton = $('[data-tool="question-bank"]');
+      if (questionButton) questionButton.click();
+    });
+  }
+
+  function applyCalculatorPreset(tool, preset) {
+    const inputs = preset && preset.inputs ? preset.inputs : {};
+    if (tool === "root-locus") {
+      const tab = $("#tab-formula");
+      if (tab) tab.click();
+      applyCalculatorInput("#formula-numerator-input", inputs.numerator || "1");
+      applyCalculatorInput("#formula-denominator-input", inputs.denominator || "1");
+      const calculate = $("#calculate-button");
+      if (calculate) calculate.click();
+      return;
+    }
+    if (tool === "second-order" && inputs.mode) {
+      applyCalculatorInput("#time-mode", inputs.mode);
+      const mode = $("#time-mode");
+      if (mode) mode.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const modeSelectors = {
+      modeling: "#modeling-mode",
+      compensation: "#compensation-mode",
+      discrete: "#discrete-mode",
+      nonlinear: "#nonlinear-type",
+      "state-space": "#state-mode"
+    };
+    if (inputs.mode != null && modeSelectors[tool]) {
+      applyCalculatorInput(modeSelectors[tool], inputs.mode);
+      const mode = $(modeSelectors[tool]);
+      if (mode) mode.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    const mappings = {
+      routh: [["#routh-polynomial", inputs.polynomial], ["#routh-calculate", null]],
+      frequency: [["#frequency-numerator", inputs.numerator], ["#frequency-denominator", inputs.denominator], ["#frequency-min", inputs.minimum], ["#frequency-max", inputs.maximum], ["#frequency-calculate", null]],
+      nyquist: [["#nyquist-numerator", inputs.numerator], ["#nyquist-denominator", inputs.denominator], ["#nyquist-min", inputs.minimum], ["#nyquist-max", inputs.maximum], ["#nyquist-calculate", null]],
+      "steady-error": [["#error-numerator", inputs.numerator], ["#error-denominator", inputs.denominator], ["#error-input-type", inputs.inputType], ["#error-amplitude", inputs.amplitude], ["#steady-error-calculate", null]],
+      "second-order": [["#second-zeta", inputs.zeta], ["#second-wn", inputs.wn], ["#first-gain", inputs.gain], ["#first-time", inputs.timeConstant], ["#higher-numerator", inputs.numerator], ["#higher-denominator", inputs.denominator], ["#second-order-calculate", null]],
+      compensation: [["#compensation-numerator", inputs.numerator], ["#compensation-denominator", inputs.denominator], ["#compensation-margin", inputs.margin], ["#compensation-safety", inputs.safety], ["#compensation-beta", inputs.beta], ["#compensation-calculate", null]],
+      modeling: [["#partial-numerator", inputs.numerator], ["#partial-denominator", inputs.denominator], ["#modeling-calculate", null]],
+      discrete: [["#jury-polynomial", inputs.polynomial], ["#difference-a", inputs.a], ["#difference-b", inputs.b], ["#difference-count", inputs.count], ["#discrete-calculate", null]],
+      nonlinear: [["#nonlinear-gain", inputs.gain], ["#nonlinear-width", inputs.width], ["#nonlinear-amplitude", inputs.amplitude], ["#nonlinear-calculate", null]],
+      "state-space": [["#state-a", inputs.a], ["#state-b", inputs.b], ["#state-c", inputs.c], ["#state-d", inputs.d], ["#state-calculate", null]]
+    };
+    (mappings[tool] || []).forEach(([selector, value]) => {
+      if (value != null) applyCalculatorInput(selector, value);
+      else { const button = $(selector); if (button) button.click(); }
+    });
+  }
+
+  window.ControlCalculatorBridge = {
+    open(tool, preset, context) {
+      const target = $('[data-tool="' + tool + '"]');
+      if (!target) return;
+      window.ControlQuestionContext = context || null;
+      target.click();
+      showQuestionContext(tool, context);
+      applyCalculatorPreset(tool, preset);
+    }
+  };
+
   addNavigation();
   addToolViews();
+  // Dynamic transfer-function panels are inserted above; attach their shared
+  // keypad immediately as well as through the observer used for later panels.
+  if (window.TransferKeypad) window.TransferKeypad.attach(document);
 
   function installModeSwitch(selectSelector, panelAttribute, callback) {
     const select = $(selectSelector);
@@ -303,7 +392,10 @@ Y,A,-2</textarea></label>
     const mapY = (value) => height - padding - (value + clip) / (2 * clip) * (height - 2 * padding);
     const positivePath = visible.slice(0, positive.length).map((point, index) => (index ? "L" : "M") + mapX(point.x).toFixed(2) + " " + mapY(point.y).toFixed(2)).join(" ");
     const negativePath = visible.slice(positive.length).map((point, index) => (index ? "L" : "M") + mapX(point.x).toFixed(2) + " " + mapY(point.y).toFixed(2)).join(" ");
-    return '<svg viewBox="0 0 600 390" role="img" aria-label="Nyquist曲线"><line x1="34" y1="195" x2="566" y2="195" stroke="#aab4af"/><line x1="300" y1="34" x2="300" y2="356" stroke="#aab4af"/><path d="' + positivePath + '" fill="none" stroke="#176b4d" stroke-width="2.3"/><path d="' + negativePath + '" fill="none" stroke="#326ea8" stroke-width="2"/><circle cx="' + mapX(-1) + '" cy="' + mapY(0) + '" r="5" fill="#b64b44"/><text x="' + (mapX(-1) + 7) + '" y="' + (mapY(0) - 8) + '" fill="#8b322d" font-size="10">(-1,j0)</text><text x="550" y="187" font-size="10" fill="#66716d">Re</text><text x="307" y="47" font-size="10" fill="#66716d">Im</text></svg>';
+    // Keep a small, transparent hit target for every sampled point.  This makes
+    // dense Nyquist curves inspectable without changing the visual line.
+    const pointHits = visible.map((point, index) => '<circle class="plot-hit-point" data-plot-hit="true" cx="' + mapX(point.x).toFixed(2) + '" cy="' + mapY(point.y).toFixed(2) + '" r="7" data-plot-label="' + (index < positive.length ? 'ω=' + formatNumber(result.points[index].frequency, 4) : 'ω=' + formatNumber(result.points[positive.length * 2 - index - 1].frequency, 4)) + '" data-plot-x="' + formatNumber(point.x, 6) + '" data-plot-y="' + formatNumber(point.y, 6) + '"/>').join('');
+    return '<svg viewBox="0 0 600 390" role="img" aria-label="Nyquist曲线"><line x1="34" y1="195" x2="566" y2="195" stroke="#aab4af"/><line x1="300" y1="34" x2="300" y2="356" stroke="#aab4af"/><path d="' + positivePath + '" fill="none" stroke="#176b4d" stroke-width="2.3"/><path d="' + negativePath + '" fill="none" stroke="#326ea8" stroke-width="2"/>' + pointHits + '<circle cx="' + mapX(-1) + '" cy="' + mapY(0) + '" r="5" fill="#b64b44"/><text x="' + (mapX(-1) + 7) + '" y="' + (mapY(0) - 8) + '" fill="#8b322d" font-size="10">(-1,j0)</text><text x="550" y="187" font-size="10" fill="#66716d">Re</text><text x="307" y="47" font-size="10" fill="#66716d">Im</text></svg>';
   }
 
   function calculateNyquist() {
@@ -372,7 +464,7 @@ Y,A,-2</textarea></label>
     const mapX = (index) => padding + index / Math.max(1, values.length - 1) * (width - 2 * padding);
     const mapY = (value) => height - padding - (value - minimum) / range * (height - 2 * padding);
     const path = values.map((value, index) => (index ? "L" : "M") + mapX(index).toFixed(2) + " " + mapY(value).toFixed(2)).join(" ");
-    const stems = values.slice(0, 80).map((value, index) => '<line x1="' + mapX(index) + '" y1="' + mapY(0) + '" x2="' + mapX(index) + '" y2="' + mapY(value) + '" stroke="#a9cfbc"/><circle cx="' + mapX(index) + '" cy="' + mapY(value) + '" r="2" fill="#176b4d"/>').join("");
+    const stems = values.slice(0, 80).map((value, index) => '<line x1="' + mapX(index) + '" y1="' + mapY(0) + '" x2="' + mapX(index) + '" y2="' + mapY(value) + '" stroke="#a9cfbc"/><circle class="plot-hit-point" data-plot-hit="true" cx="' + mapX(index) + '" cy="' + mapY(value) + '" r="5" fill="#176b4d" data-plot-label="k=' + index + '" data-plot-x="' + index + '" data-plot-y="' + formatNumber(value, 8) + '"/>').join("");
     return '<svg viewBox="0 0 600 230" role="img" aria-label="离散响应"><line x1="28" y1="' + mapY(0) + '" x2="572" y2="' + mapY(0) + '" stroke="#aab4af"/>' + stems + '<path d="' + path + '" fill="none" stroke="#176b4d" stroke-width="1.7"/></svg>';
   }
 
@@ -573,6 +665,7 @@ Y,A,-2</textarea></label>
 
   extendTimeDomain();
   extendSteadyError();
+  if (window.TransferKeypad) window.TransferKeypad.attach(document);
   renderTheory();
 
   document.addEventListener("keydown", (event) => {
@@ -596,4 +689,140 @@ Y,A,-2</textarea></label>
   });
 
   [calculateModeling, calculateNyquist, calculateCompensation, calculateDiscrete, calculateNonlinear, calculateStateSpace].forEach((calculate) => calculate());
+
+  // SVG plots are deliberately dependency-free.  The interaction layer is
+  // attached after rendering and also watches future result updates, so every
+  // calculator gets the same wheel zoom, drag pan and point inspection.
+  (function installPlotInteractions() {
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    let tooltip;
+    let activeSvg = null;
+    const plotSelector = ".response-plot svg, .bode-plot svg, .nyquist-plot svg, .root-locus-block svg, .axis-block svg";
+
+    function getTooltip() {
+      if (tooltip) return tooltip;
+      tooltip = document.createElement("div");
+      tooltip.className = "plot-tooltip";
+      tooltip.setAttribute("role", "status");
+      tooltip.hidden = true;
+      document.body.appendChild(tooltip);
+      return tooltip;
+    }
+
+    function showTooltip(event, target) {
+      const label = target.getAttribute("data-plot-label") || target.parentElement && target.parentElement.getAttribute("aria-label");
+      if (!label) return;
+      const tip = getTooltip();
+      const x = target.getAttribute("data-plot-x");
+      const y = target.getAttribute("data-plot-y");
+      tip.innerHTML = "<strong>数据点</strong><span>" + label + "</span>" + (x !== null || y !== null ? "<small>坐标：" + (x || "—") + "，" + (y || "—") + "</small>" : "");
+      tip.hidden = false;
+      const margin = 12;
+      const rect = tip.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - rect.width - margin, Math.max(margin, event.clientX + 14));
+      const top = Math.min(window.innerHeight - rect.height - margin, Math.max(margin, event.clientY - rect.height - 14));
+      tip.style.left = left + "px";
+      tip.style.top = top + "px";
+    }
+
+    function hideTooltip() {
+      if (tooltip) tooltip.hidden = true;
+    }
+
+    function updateTransform(state) {
+      state.viewport.setAttribute("transform", "translate(" + state.tx.toFixed(2) + " " + state.ty.toFixed(2) + ") scale(" + state.scale.toFixed(4) + ")");
+    }
+
+    function reset(state) {
+      state.scale = 1;
+      state.tx = 0;
+      state.ty = 0;
+      updateTransform(state);
+    }
+
+    function pointInView(svg, event) {
+      const rect = svg.getBoundingClientRect();
+      const viewBox = svg.viewBox.baseVal;
+      return {
+        x: viewBox.x + (event.clientX - rect.left) / rect.width * viewBox.width,
+        y: viewBox.y + (event.clientY - rect.top) / rect.height * viewBox.height
+      };
+    }
+
+    function attach(svg) {
+      if (!svg || svg.dataset.plotInteractive === "true") return;
+      svg.dataset.plotInteractive = "true";
+      svg.classList.add("interactive-plot");
+      svg.setAttribute("tabindex", "0");
+      svg.setAttribute("aria-description", "滚轮缩放，拖动平移，双击复位；悬停数据点查看具体数值");
+      const viewport = document.createElementNS(SVG_NS, "g");
+      viewport.setAttribute("data-plot-viewport", "true");
+      while (svg.firstChild) viewport.appendChild(svg.firstChild);
+      svg.appendChild(viewport);
+      const state = { viewport, scale: 1, tx: 0, ty: 0, dragging: false, lastX: 0, lastY: 0 };
+      svg.__plotState = state;
+      const hint = svg.parentElement && svg.parentElement.querySelector(".plot-help");
+      if (!hint && svg.parentElement) {
+        const help = document.createElement("span");
+        help.className = "plot-help";
+        help.textContent = "滚轮缩放 · 拖动平移 · 悬停查看数据 · 双击复位";
+        svg.parentElement.appendChild(help);
+      }
+      svg.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const before = pointInView(svg, event);
+        const factor = event.deltaY < 0 ? 1.16 : 1 / 1.16;
+        const next = Math.max(0.65, Math.min(8, state.scale * factor));
+        state.tx = before.x - (before.x - state.tx) * (next / state.scale);
+        state.ty = before.y - (before.y - state.ty) * (next / state.scale);
+        state.scale = next;
+        updateTransform(state);
+      }, { passive: false });
+      svg.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        state.dragging = true;
+        state.lastX = event.clientX;
+        state.lastY = event.clientY;
+        svg.setPointerCapture(event.pointerId);
+        svg.classList.add("is-panning");
+      });
+      svg.addEventListener("pointermove", (event) => {
+        if (state.dragging) {
+          const rect = svg.getBoundingClientRect();
+          const viewBox = svg.viewBox.baseVal;
+          state.tx += (event.clientX - state.lastX) / rect.width * viewBox.width;
+          state.ty += (event.clientY - state.lastY) / rect.height * viewBox.height;
+          state.lastX = event.clientX;
+          state.lastY = event.clientY;
+          updateTransform(state);
+        }
+        const target = event.target && event.target.closest ? event.target.closest("[data-plot-label]") : null;
+        if (target && svg.contains(target)) showTooltip(event, target); else hideTooltip();
+      });
+      ["pointerup", "pointercancel", "pointerleave"].forEach((name) => svg.addEventListener(name, (event) => {
+        if (name === "pointerleave" && !state.dragging) hideTooltip();
+        if (state.dragging && (name !== "pointerleave" || !svg.hasPointerCapture(event.pointerId))) {
+          state.dragging = false;
+          svg.classList.remove("is-panning");
+        }
+      }));
+      svg.addEventListener("dblclick", () => reset(state));
+      svg.addEventListener("keydown", (event) => {
+        if (event.key === "0" || event.key === "Escape") { event.preventDefault(); reset(state); }
+        if (event.key === "+" || event.key === "=") { state.scale = Math.min(8, state.scale * 1.16); updateTransform(state); }
+        if (event.key === "-") { state.scale = Math.max(.65, state.scale / 1.16); updateTransform(state); }
+      });
+    }
+
+    function scan(root) {
+      if (!root || !root.querySelectorAll) return;
+      root.querySelectorAll(plotSelector).forEach(attach);
+    }
+    scan(document);
+    new MutationObserver((records) => records.forEach((record) => record.addedNodes.forEach((node) => scan(node)))).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener("pointerdown", (event) => {
+      if (event.target.closest && event.target.closest(".interactive-plot")) activeSvg = event.target.closest(".interactive-plot");
+    });
+    document.addEventListener("visibilitychange", hideTooltip);
+  }());
 })();

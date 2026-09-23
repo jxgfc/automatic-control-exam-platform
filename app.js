@@ -236,7 +236,7 @@
       const x = mapX(value);
       markers.push(
         '<g aria-label="零点 ' + escapeAttribute(formatNumber(value)) + '">' +
-        '<circle cx="' + x + '" cy="' + axisY + '" r="5.5" fill="#fff" stroke="#326ea8" stroke-width="2.5"/>' +
+        '<circle class="plot-hit-point" cx="' + x + '" cy="' + axisY + '" r="6" fill="#fff" stroke="#326ea8" stroke-width="2.5" data-plot-label="零点 s=' + escapeAttribute(formatNumber(value, 6)) + '" data-plot-x="' + escapeAttribute(formatNumber(value, 6)) + '" data-plot-y="0"/>' +
         '<text x="' + x + '" y="82" text-anchor="middle" fill="#66716d" font-size="10">' + formatNumber(value, 4) + "</text></g>"
       );
     });
@@ -246,7 +246,7 @@
       markers.push(
         '<g aria-label="' + point.label + " " + escapeAttribute(formatNumber(point.coordinate)) + '">' +
         '<line x1="' + x + '" y1="24" x2="' + x + '" y2="49" stroke="#176b4d" stroke-width="1.5" stroke-dasharray="3 3"/>' +
-        '<circle cx="' + x + '" cy="' + axisY + '" r="5" fill="#176b4d" stroke="#fff" stroke-width="2"/>' +
+        '<circle class="plot-hit-point" cx="' + x + '" cy="' + axisY + '" r="6" fill="#176b4d" stroke="#fff" stroke-width="2" data-plot-label="' + point.label + ' s=' + escapeAttribute(formatNumber(point.coordinate, 6)) + '，K=' + escapeAttribute(formatNumber(point.gain, 6)) + '" data-plot-x="' + escapeAttribute(formatNumber(point.coordinate, 6)) + '" data-plot-y="0"/>' +
         '<text x="' + x + '" y="17" text-anchor="middle" fill="#0f513b" font-size="10" font-weight="700">s=' + formatNumber(point.coordinate, 5) + "</text></g>"
       );
     });
@@ -290,6 +290,7 @@
     const mapX = (value) => width / 2 + (value - centerX) * scale;
     const mapY = (value) => height / 2 - (value - centerY) * scale;
     const colors = ["#176b4d", "#326ea8", "#b76a18", "#8b4d85", "#277f89", "#9b554c"];
+    const escapeAttribute = (value) => String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
     const svgParts = [];
 
     if (geometry.asymptoteCount > 0 && geometry.centroid !== null) {
@@ -311,29 +312,31 @@
       svgParts.push('<line x1="' + mapX(0) + '" y1="14" x2="' + mapX(0) + '" y2="316" stroke="#89938f" stroke-width="1"/>');
     }
 
+    const complexPointText = (point) => {
+      const sign = point.imaginary >= 0 ? "+" : "−";
+      return formatNumber(point.real, 5) + sign + "j" + formatNumber(Math.abs(point.imaginary), 5);
+    };
+
     locus.branches.forEach((branch, index) => {
       const path = branch.map((point, pointIndex) => (
         (pointIndex ? "L" : "M") + mapX(point.real).toFixed(2) + " " + mapY(point.imaginary).toFixed(2)
       )).join(" ");
-      svgParts.push('<path d="' + path + '" fill="none" stroke="' + colors[index % colors.length] + '" stroke-width="2"/>');
+      const hitPoints = branch.filter((point, pointIndex) => pointIndex % 4 === 0 || pointIndex === branch.length - 1).map((point) => '<circle class="plot-hit-point" data-plot-hit="true" cx="' + mapX(point.real).toFixed(2) + '" cy="' + mapY(point.imaginary).toFixed(2) + '" r="6" data-plot-label="根轨迹 s=' + escapeAttribute(complexPointText(point)) + '" data-plot-x="' + escapeAttribute(formatNumber(point.real, 6)) + '" data-plot-y="' + escapeAttribute(formatNumber(point.imaginary, 6)) + 'j"/>').join('');
+      svgParts.push('<path d="' + path + '" fill="none" stroke="' + colors[index % colors.length] + '" stroke-width="2"/>' + hitPoints);
     });
 
     geometry.poles.forEach((pole) => {
       const x = mapX(pole.real);
       const y = mapY(pole.imaginary);
-      svgParts.push('<line x1="' + (x - 5) + '" y1="' + (y - 5) + '" x2="' + (x + 5) + '" y2="' + (y + 5) + '" stroke="#b3403b" stroke-width="2.5"/><line x1="' + (x + 5) + '" y1="' + (y - 5) + '" x2="' + (x - 5) + '" y2="' + (y + 5) + '" stroke="#b3403b" stroke-width="2.5"/>');
+      svgParts.push('<g class="plot-hit-point" data-plot-label="极点 s=' + escapeAttribute(complexPointText(pole)) + '" data-plot-x="' + escapeAttribute(formatNumber(pole.real, 6)) + '" data-plot-y="' + escapeAttribute(formatNumber(pole.imaginary, 6)) + '"><line x1="' + (x - 5) + '" y1="' + (y - 5) + '" x2="' + (x + 5) + '" y2="' + (y + 5) + '" stroke="#b3403b" stroke-width="2.5"/><line x1="' + (x + 5) + '" y1="' + (y - 5) + '" x2="' + (x - 5) + '" y2="' + (y + 5) + '" stroke="#b3403b" stroke-width="2.5"/></g>');
     });
     geometry.zeros.forEach((zero) => {
-      svgParts.push('<circle cx="' + mapX(zero.real) + '" cy="' + mapY(zero.imaginary) + '" r="5.5" fill="#fff" stroke="#326ea8" stroke-width="2.5"/>');
+      svgParts.push('<circle class="plot-hit-point" cx="' + mapX(zero.real) + '" cy="' + mapY(zero.imaginary) + '" r="6" fill="#fff" stroke="#326ea8" stroke-width="2.5" data-plot-label="零点 s=' + escapeAttribute(complexPointText(zero)) + '" data-plot-x="' + escapeAttribute(formatNumber(zero.real, 6)) + '" data-plot-y="' + escapeAttribute(formatNumber(zero.imaginary, 6)) + 'j"/>');
     });
     validPoints.forEach((point) => {
-      svgParts.push('<circle cx="' + mapX(point.coordinate) + '" cy="' + mapY(0) + '" r="4.5" fill="#176b4d" stroke="#fff" stroke-width="1.5"/>');
+      svgParts.push('<circle class="plot-hit-point" cx="' + mapX(point.coordinate) + '" cy="' + mapY(0) + '" r="6" fill="#176b4d" stroke="#fff" stroke-width="1.5" data-plot-label="' + escapeAttribute(point.label + ' s=' + formatNumber(point.coordinate, 6) + '，K=' + formatNumber(point.gain, 6)) + '" data-plot-x="' + escapeAttribute(formatNumber(point.coordinate, 6)) + '" data-plot-y="0"/>');
     });
 
-    const complexPointText = (point) => {
-      const sign = point.imaginary >= 0 ? "+" : "−";
-      return formatNumber(point.real, 5) + sign + "j" + formatNumber(Math.abs(point.imaginary), 5);
-    };
     const departureText = geometry.departureAngles.length
       ? geometry.departureAngles.map((item) => complexPointText(item.point) + "：" + formatNumber(item.angle, 5) + "°").join("；")
       : "无复极点";

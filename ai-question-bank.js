@@ -11,6 +11,8 @@
     analysis: item.answer
   }));
   const builtInQuestions = practiceQuestions.concat(theoryQuestions);
+  const Solver = window.RootLocusSolver;
+  const Core = window.ControlExamCore;
   const $ = (selector, root) => (root || document).querySelector(selector);
   const $$ = (selector, root) => [...(root || document).querySelectorAll(selector)];
   const HISTORY_KEY = "control-ai-question-history-v1";
@@ -44,6 +46,87 @@
     "状态空间": "state-space",
     "基础概念": "theory"
   };
+
+  const calculatorTools = new Set(["routh", "steady-error", "second-order", "root-locus", "frequency", "nyquist", "compensation", "modeling", "discrete", "nonlinear", "state-space"]);
+
+  function plainFormula(value) {
+    let text = String(value == null ? "" : value).trim();
+    text = text.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)");
+    text = text.replace(/\\left|\\right|\\cdot|\\,|\\!|\\mathrm\{([^{}]*)\}/g, (_, content) => content || "");
+    text = text.replace(/[{}]/g, "").replace(/\s+/g, "");
+    text = text.replace(/[−–—]/g, "-").replace(/×/g, "*").replace(/·/g, "*").replace(/\$/g, "");
+    text = text.replace(/[。；;，,]+$/, "");
+    return text;
+  }
+
+  function extractTransferFormula(text) {
+    const source = String(text || "");
+    const fraction = source.match(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/);
+    if (fraction) return { numerator: plainFormula(fraction[1]), denominator: plainFormula(fraction[2]) };
+    const plain = source.match(/(?:G(?:\s*\([^)]*\))?(?:H\s*\([^)]*\))?|\u4f20\u9012\u51fd\u6570)\s*[=:]\s*([^\n，。；;]+)/i);
+    if (plain) {
+      const pieces = plain[1].split("/");
+      if (pieces.length >= 2) return { numerator: plainFormula(pieces[0]), denominator: plainFormula(pieces.slice(1).join("/")) };
+    }
+    return null;
+  }
+
+  function normalizeCalculatorSpec(value) {
+    if (!value || typeof value !== "object") return null;
+    const rawTool = String(value.tool || value.type || "");
+    const aliases = { root: "root-locus", rootlocus: "root-locus", bode: "frequency", nyquist: "nyquist", steady: "steady-error", steadyerror: "steady-error", time: "second-order", secondorder: "second-order", jury: "discrete", statespace: "state-space" };
+    const tool = aliases[rawTool.toLowerCase().replace(/[_\s]/g, "")] || rawTool;
+    if (!calculatorTools.has(tool)) return null;
+    const rawInputs = value.inputs && typeof value.inputs === "object" ? value.inputs : value.parameters && typeof value.parameters === "object" ? value.parameters : value;
+    const inputs = {};
+    const allowed = ["numerator", "denominator", "polynomial", "zeta", "wn", "minimum", "maximum", "inputType", "amplitude", "mode", "gain", "width", "margin", "safety", "beta", "timeConstant", "a", "b", "c", "d", "poles", "q", "parameter", "values", "count", "order"];
+    allowed.forEach((key) => {
+      const item = rawInputs[key];
+      if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") inputs[key] = String(item);
+      else if (Array.isArray(item) && item.length <= 30 && item.every((entry) => typeof entry === "string" || typeof entry === "number")) inputs[key] = item.map(String);
+    });
+    if (!Object.keys(inputs).length) return null;
+    return { tool, inputs, source: "AI题目参数" };
+  }
+
+  function inferCalculatorSpec(item) {
+    const explicit = normalizeCalculatorSpec(item && item.calculator);
+    if (explicit) return explicit;
+    const chapter = String(item && item.chapter || "");
+    const source = String(item && item.question || "") + "\n" + String(item && item.analysis || "");
+    if (/根轨迹/.test(chapter)) {
+      const transfer = extractTransferFormula(source);
+      if (transfer) return { tool: "root-locus", inputs: { numerator: /^K$/i.test(transfer.numerator) ? "1" : transfer.numerator, denominator: transfer.denominator }, source: "从题干识别" };
+    }
+    if (/频域|Bode|Nyquist/i.test(chapter)) {
+      const transfer = extractTransferFormula(source);
+      if (transfer) return { tool: /Nyquist/i.test(source) ? "nyquist" : "frequency", inputs: transfer, source: "从题干识别" };
+    }
+    if (/稳态误差/.test(chapter)) {
+      const transfer = extractTransferFormula(source);
+      if (transfer) return { tool: "steady-error", inputs: transfer, source: "从题干识别" };
+    }
+    if (/系统校正|校正装置/.test(chapter)) {
+      const transfer = extractTransferFormula(source);
+      if (transfer) return { tool: "compensation", inputs: transfer, source: "从题干识别" };
+    }
+    if (/时域/.test(chapter)) {
+      const zeta = source.match(/(?:ζ|zeta|阻尼比)\s*[=＝:]?\s*([0-9.]+)/i);
+      const wn = source.match(/(?:ω\s*n|ωn|自然频率)\s*[=＝:]?\s*([0-9.]+)/i);
+      if (zeta && wn) return { tool: "second-order", inputs: { zeta: zeta[1], wn: wn[1] }, source: "从题干识别" };
+      const transfer = extractTransferFormula(source);
+      if (transfer) return { tool: "second-order", inputs: { mode: "higher", numerator: transfer.numerator, denominator: transfer.denominator }, source: "从题干识别" };
+    }
+    if (/离散|Jury|Z变换/i.test(chapter)) {
+      const polynomial = source.match(/(?:F\s*\(\s*z\s*\)|特征多项式)\s*[=:：]\s*([^\n，。；;]+)/i);
+      if (polynomial) return { tool: "discrete", inputs: { mode: "jury", polynomial: plainFormula(polynomial[1]) }, source: "从题干识别" };
+    }
+    if (/劳斯|稳定判据/.test(chapter)) {
+      const polynomial = source.match(/(?:D\s*\(\s*s\s*\)|特征方程|特征多项式)\s*[=:：]\s*([^\n，。；;]+)/i);
+      if (polynomial) return { tool: "routh", inputs: { polynomial: plainFormula(polynomial[1]) }, source: "从题干识别" };
+    }
+    return null;
+  }
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, (character) => ({
@@ -160,6 +243,7 @@
   }
 
   function normalizeQuestion(item, index) {
+    const calculator = inferCalculatorSpec(item);
     return {
       id: String(item.id || "AI-HISTORY-" + index),
       chapter: String(item.chapter || "综合"),
@@ -172,7 +256,8 @@
       analysis: normalizeFormulaText(String(item.analysis || item.answer || "")),
       keywords: Array.isArray(item.keywords) ? item.keywords.map(String) : [],
       source: String(item.source || "AI原创生成"),
-      generationNotice: String(item.generationNotice || "")
+      generationNotice: String(item.generationNotice || ""),
+      ...(calculator ? { calculator } : {})
     };
   }
 
@@ -578,6 +663,95 @@
     return queue[queueIndex] || null;
   }
 
+  function plotNumber(value) {
+    return Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+  }
+
+  function questionVisual(item, preset) {
+    if (!preset || !preset.inputs) return "";
+    try {
+      if (preset.tool === "root-locus") {
+        const transfer = Solver.transferFunctionFromExpressions(preset.inputs.numerator || "1", preset.inputs.denominator || "1");
+        const locus = Solver.rootLocusBranches(transfer.numerator, transfer.denominator, 100, 80);
+        const points = locus.branches.flat().filter((_, index) => index % 3 === 0);
+        const all = points.concat(Solver.complexPolynomialRoots(transfer.denominator), Solver.complexPolynomialRoots(transfer.numerator));
+        const minX = Math.min(-1, ...all.map((point) => point.real));
+        const maxX = Math.max(1, ...all.map((point) => point.real));
+        const minY = Math.min(-1, ...all.map((point) => point.imaginary));
+        const maxY = Math.max(1, ...all.map((point) => point.imaginary));
+        const padX = Math.max(1, (maxX - minX) * 0.15);
+        const padY = Math.max(1, (maxY - minY) * 0.15);
+        const x0 = minX - padX, x1 = maxX + padX, y0 = minY - padY, y1 = maxY + padY;
+        const mapX = (value) => 20 + ((value - x0) / (x1 - x0)) * 580;
+        const mapY = (value) => 150 - ((value - y0) / (y1 - y0)) * 130;
+        const branchLines = locus.branches.map((branch, branchIndex) => '<path d="' + branch.map((point, pointIndex) => (pointIndex ? "L" : "M") + mapX(point.real).toFixed(1) + " " + mapY(point.imaginary).toFixed(1)).join(" ") + '" fill="none" stroke="hsl(' + (branchIndex * 67 + 145) + ' 55% 40%)" stroke-width="2"/>').join("");
+        const poleMarks = Solver.complexPolynomialRoots(transfer.denominator).map((point, index) => '<g class="question-plot-point" data-point-info="极点 ' + escapeHtml(plotNumber(point.real) + (point.imaginary >= 0 ? "+" : "") + plotNumber(point.imaginary) + "j") + '"><title>极点</title><line x1="' + (mapX(point.real) - 4) + '" y1="' + (mapY(point.imaginary) - 4) + '" x2="' + (mapX(point.real) + 4) + '" y2="' + (mapY(point.imaginary) + 4) + '"/><line x1="' + (mapX(point.real) + 4) + '" y1="' + (mapY(point.imaginary) - 4) + '" x2="' + (mapX(point.real) - 4) + '" y2="' + (mapY(point.imaginary) + 4) + '"/></g>').join("");
+        const zeroMarks = Solver.complexPolynomialRoots(transfer.numerator).map((point) => '<g class="question-plot-point" data-point-info="零点 ' + escapeHtml(plotNumber(point.real) + (point.imaginary >= 0 ? "+" : "") + plotNumber(point.imaginary) + "j") + '"><title>零点</title><circle cx="' + mapX(point.real) + '" cy="' + mapY(point.imaginary) + '" r="5"/></g>').join("");
+        const samples = points.map((point) => '<circle class="question-plot-point" data-point-info="K=' + escapeHtml(plotNumber(point.gain)) + '，s=' + escapeHtml(plotNumber(point.real) + (point.imaginary >= 0 ? "+" : "") + plotNumber(point.imaginary) + "j") + '" cx="' + mapX(point.real) + '" cy="' + mapY(point.imaginary) + '" r="2.8"><title>K=' + escapeHtml(plotNumber(point.gain)) + '</title></circle>').join("");
+        const axisX = mapY(0), axisY = mapX(0);
+        return '<section class="question-visual" data-question-visual="root-locus"><div class="question-visual-heading"><strong>题目图形 · 根轨迹预览</strong><span>滚轮缩放 · 点击点查看坐标</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目根轨迹图"><line class="question-plot-axis" x1="20" y1="' + axisX + '" x2="600" y2="' + axisX + '"/><line class="question-plot-axis" x1="' + axisY + '" y1="15" x2="' + axisY + '" y2="165"/>' + branchLines + poleMarks + zeroMarks + samples + '</svg></div><div class="question-plot-info" data-question-plot-info>将鼠标悬停或点击图中点查看具体信息</div></section>';
+      }
+      if (preset.tool === "nyquist" && Core) {
+        const transfer = Solver.transferFunctionFromExpressions(preset.inputs.numerator || "1", preset.inputs.denominator || "1");
+        const result = Core.nyquistAnalysis(transfer.numerator, transfer.denominator, preset.inputs.minimum, preset.inputs.maximum, 120);
+        const points = result.closedLoopPoints || [];
+        const minX = Math.min(-1.5, ...points.map((point) => point.real));
+        const maxX = Math.max(1, ...points.map((point) => point.real));
+        const minY = Math.min(-1.2, ...points.map((point) => point.imaginary));
+        const maxY = Math.max(1.2, ...points.map((point) => point.imaginary));
+        const mapX = (value) => 20 + (value - minX) / Math.max(1, maxX - minX) * 580;
+        const mapY = (value) => 150 - (value - minY) / Math.max(1, maxY - minY) * 130;
+        const path = points.map((point, index) => (index ? "L" : "M") + mapX(point.real).toFixed(1) + " " + mapY(point.imaginary).toFixed(1)).join(" ");
+        const samples = points.filter((_, index) => index % 12 === 0).map((point) => '<circle class="question-plot-point" data-point-info="ω=' + escapeHtml(plotNumber(point.frequency)) + '，Re=' + escapeHtml(plotNumber(point.real)) + '，Im=' + escapeHtml(plotNumber(point.imaginary)) + '" cx="' + mapX(point.real) + '" cy="' + mapY(point.imaginary) + '" r="3"><title>ω=' + escapeHtml(plotNumber(point.frequency)) + '</title></circle>').join("");
+        return '<section class="question-visual" data-question-visual="nyquist"><div class="question-visual-heading"><strong>题目图形 · Nyquist轨迹预览</strong><span>滚轮缩放 · 点击点查看复平面坐标</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目Nyquist轨迹"><line class="question-plot-axis" x1="20" y1="' + mapY(0) + '" x2="600" y2="' + mapY(0) + '"/><line class="question-plot-axis" x1="' + mapX(0) + '" y1="20" x2="' + mapX(0) + '" y2="160"/><circle cx="' + mapX(-1) + '" cy="' + mapY(0) + '" r="4" fill="#b3403b"/><path class="question-plot-line" d="' + path + '"/>' + samples + '</svg></div><div class="question-plot-info" data-question-plot-info>红点为 −1+j0 临界点；将鼠标悬停或点击图中点查看信息</div></section>';
+      }
+      if (preset.tool === "frequency" && Core) {
+        const transfer = Solver.transferFunctionFromExpressions(preset.inputs.numerator || "1", preset.inputs.denominator || "1");
+        const result = Core.bodeAnalysis(transfer.numerator, transfer.denominator, preset.inputs.minimum, preset.inputs.maximum, 100);
+        const points = result.points;
+        const minDb = Math.min(-40, ...points.map((point) => point.magnitudeDb));
+        const maxDb = Math.max(20, ...points.map((point) => point.magnitudeDb));
+        const mapX = (index) => 20 + index / Math.max(1, points.length - 1) * 580;
+        const mapY = (db) => 145 - (db - minDb) / Math.max(1, maxDb - minDb) * 120;
+        const path = points.map((point, index) => (index ? "L" : "M") + mapX(index).toFixed(1) + " " + mapY(point.magnitudeDb).toFixed(1)).join(" ");
+        const samples = points.filter((_, index) => index % 10 === 0).map((point, index) => '<circle class="question-plot-point" data-point-info="ω=' + escapeHtml(plotNumber(point.frequency)) + '，幅值=' + escapeHtml(plotNumber(point.magnitudeDb)) + ' dB" cx="' + mapX(index * 10) + '" cy="' + mapY(point.magnitudeDb) + '" r="3"><title>ω=' + escapeHtml(plotNumber(point.frequency)) + '</title></circle>').join("");
+        return '<section class="question-visual" data-question-visual="frequency"><div class="question-visual-heading"><strong>题目图形 · Bode幅频预览</strong><span>滚轮缩放 · 点击点查看频率信息</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目Bode图"><line class="question-plot-axis" x1="20" y1="145" x2="600" y2="145"/><line class="question-plot-axis" x1="20" y1="20" x2="20" y2="160"/><path class="question-plot-line" d="' + path + '"/>' + samples + '</svg></div><div class="question-plot-info" data-question-plot-info>将鼠标悬停或点击图中点查看具体信息</div></section>';
+      }
+      if (preset.tool === "second-order" && preset.inputs.zeta && preset.inputs.wn && Core) {
+        const metrics = Core.secondOrderMetrics(preset.inputs.zeta, preset.inputs.wn);
+        const values = Array.from({ length: 80 }, (_, index) => Core.secondOrderStepValue(metrics, index / 10));
+        const min = Math.min(0, ...values), max = Math.max(1, ...values);
+        const mapX = (index) => 20 + index / (values.length - 1) * 580;
+        const mapY = (value) => 150 - (value - min) / Math.max(1, max - min) * 130;
+        const path = values.map((value, index) => (index ? "L" : "M") + mapX(index).toFixed(1) + " " + mapY(value).toFixed(1)).join(" ");
+        const peaks = values.map((value, index) => ({ value, index })).filter((point) => point.index && point.index < values.length - 1 && point.value >= values[point.index - 1] && point.value >= values[point.index + 1]).slice(0, 4).map((point) => '<circle class="question-plot-point" data-point-info="t=' + (point.index / 10).toFixed(1) + ' s，y=' + point.value.toFixed(4) + '" cx="' + mapX(point.index) + '" cy="' + mapY(point.value) + '" r="3"><title>峰值</title></circle>').join("");
+        return '<section class="question-visual" data-question-visual="step-response"><div class="question-visual-heading"><strong>题目图形 · 单位阶跃响应</strong><span>滚轮缩放 · 点击采样点查看信息</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="二阶系统阶跃响应图"><line class="question-plot-axis" x1="20" y1="150" x2="600" y2="150"/><line class="question-plot-axis" x1="20" y1="20" x2="20" y2="160"/><path class="question-plot-line" d="' + path + '"/>' + peaks + '</svg></div><div class="question-plot-info" data-question-plot-info>将鼠标悬停或点击图中点查看具体信息</div></section>';
+      }
+    } catch (_) {
+      return '<div class="question-visual-unavailable">图形预览暂不可用，请先核对题目参数。</div>';
+    }
+    return "";
+  }
+
+  function installQuestionVisualInteractions() {
+    $$(".question-visual").forEach((visual) => {
+      const viewport = $(".question-plot-viewport", visual);
+      const svg = $(".question-plot-svg", visual);
+      const info = $("[data-question-plot-info]", visual);
+      let scale = 1;
+      viewport.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        scale = Math.min(3, Math.max(1, scale * (event.deltaY < 0 ? 1.12 : 0.89)));
+        svg.style.transform = "scale(" + scale.toFixed(2) + ")";
+        info.textContent = "当前缩放 " + Math.round(scale * 100) + "%；点击点查看具体信息";
+      }, { passive: false });
+      visual.addEventListener("click", (event) => {
+        const point = event.target.closest("[data-point-info]");
+        if (point && info) info.textContent = point.dataset.pointInfo;
+      });
+    });
+  }
+
   function renderQuestion() {
     const item = currentQuestion();
     updateStats();
@@ -587,6 +761,7 @@
       return;
     }
     const tool = chapterToolMap[item.chapter];
+    const calculator = item.calculator || inferCalculatorSpec(item);
     const tags = [item.chapter, item.type, item.difficulty].filter(Boolean).map((value) => "<span>" + escapeHtml(value) + "</span>").join("");
     const keywords = (item.keywords || []).map((keyword) => "<b>" + escapeHtml(keyword) + "</b>").join("");
     const options = (item.options || []).length ? '<ol class="exam-options" type="A">' + item.options.map((option) => "<li>" + examText(option) + "</li>").join("") + "</ol>" : "";
@@ -595,11 +770,17 @@
     const wrongMeta = wrongEntry ? '<div class="wrong-book-meta"><strong class="wrong-status is-' + wrongEntry.status + '">' + statusLabels[wrongEntry.status] + '</strong><span>错误 ' + wrongEntry.wrongCount + ' 次</span><span>模糊 ' + wrongEntry.partialCount + ' 次</span><span>复习 ' + wrongEntry.reviewCount + ' 次</span><span>最近 ' + formatReviewDate(wrongEntry.lastReviewedAt) + '</span></div>' : "";
     const assessment = '<div class="question-assessment"><div><strong>本次掌握情况</strong><span>' + (recent ? "最近记录：" + ratingLabels[recent.rating] : "尚未记录") + '</span></div><div class="assessment-segmented" role="group" aria-label="本题掌握情况"><button type="button" data-bank-rating="wrong" class="' + (recent && recent.rating === "wrong" ? "is-active" : "") + '">不会</button><button type="button" data-bank-rating="partial" class="' + (recent && recent.rating === "partial" ? "is-active" : "") + '">模糊</button><button type="button" data-bank-rating="mastered" class="' + (recent && recent.rating === "mastered" ? "is-active" : "") + '">掌握</button></div></div>';
     const wrongNote = wrongEntry ? '<label class="wrong-note-field"><span>错因 / 复盘</span><textarea data-bank-wrong-note rows="2" placeholder="记录错因、易混点或下次检查项">' + escapeHtml(wrongEntry.note) + "</textarea></label>" : "";
-    const solution = answerVisible ? '<div class="practice-solution"><h4>参考答案</h4><div class="solution-answer math-content">' + examText(item.answer) + '</div><h4>解析</h4><div class="solution-analysis math-content">' + examText(item.analysis) + '</div><div class="keyword-list">' + keywords + "</div>" + (tool ? '<button type="button" class="table-tool-button" data-bank-open-tool="' + tool + '">打开对应计算器</button>' : "") + assessment + wrongNote + "</div>" : '<div class="answer-placeholder">完成作答后再展开答案与解析</div>';
-    $("#practice-question-card").innerHTML = '<div class="exam-paper-heading"><div><strong>第 ' + (queueIndex + 1) + ' 题</strong><span>（本题 ' + suggestedScore(item) + ' 分）</span></div><small>' + escapeHtml(item.source) + " · " + (queueIndex + 1) + " / " + queue.length + '</small></div><div class="practice-tags">' + tags + "</div>" + wrongMeta + '<div class="exam-question-body math-content">' + examText(item.question) + '</div><label class="field practice-answer-field"><span class="exam-answer-label">解：</span><textarea id="bank-user-answer" rows="6" placeholder="在此书写解题过程"></textarea></label>' + solution;
+    const visual = questionVisual(item, calculator);
+    const showCalculatorContext = Boolean(calculator) || /^AI/i.test(String(item.source || ""));
+    const calculatorContext = !showCalculatorContext ? "" : calculator
+      ? '<div class="question-calculator-context"><div><strong>已识别计算参数</strong><span>' + escapeHtml(calculator.source || "可带入对应计算器") + " · " + escapeHtml(calculator.tool) + '</span></div><button type="button" class="table-tool-button" data-bank-open-tool="' + escapeHtml(calculator.tool) + '">带入并打开计算器</button></div>'
+      : '<div class="question-calculator-context is-unavailable"><div><strong>暂未识别可带入参数</strong><span>这道题适合先阅读题干与解析；如需计算，请手动填写计算器输入。</span></div></div>';
+    const solution = answerVisible ? '<div class="practice-solution"><h4>参考答案</h4><div class="solution-answer math-content">' + examText(item.answer) + '</div><h4>解析</h4><div class="solution-analysis math-content">' + examText(item.analysis) + '</div><div class="keyword-list">' + keywords + "</div>" + (calculator ? '<button type="button" class="table-tool-button" data-bank-open-tool="' + escapeHtml(calculator.tool) + '">带入并打开计算器</button>' : tool ? '<button type="button" class="table-tool-button" data-bank-open-tool="' + tool + '">打开对应计算器</button>' : "") + assessment + wrongNote + "</div>" : '<div class="answer-placeholder">完成作答后再展开答案与解析</div>';
+    $("#practice-question-card").innerHTML = '<div class="exam-paper-heading"><div><strong>第 ' + (queueIndex + 1) + ' 题</strong><span>（本题 ' + suggestedScore(item) + ' 分）</span></div><small>' + escapeHtml(item.source) + " · " + (queueIndex + 1) + " / " + queue.length + '</small></div><div class="practice-tags">' + tags + "</div>" + calculatorContext + visual + wrongMeta + '<div class="exam-question-body math-content">' + examText(item.question) + '</div><label class="field practice-answer-field"><span class="exam-answer-label">解：</span><textarea id="bank-user-answer" rows="6" placeholder="在此书写解题过程"></textarea></label>' + solution;
     if (options) $(".exam-question-body", $("#practice-question-card")).insertAdjacentHTML("beforeend", options);
     $("#bank-user-answer").value = drafts.get(item.id) || "";
     renderExamMath($("#practice-question-card"));
+    installQuestionVisualInteractions();
     $("#practice-actions").hidden = false;
     $("#bank-reveal").textContent = answerVisible ? "隐藏答案与解析" : "显示答案与解析";
     $("#bank-favorite").textContent = favorites.has(item.id) ? "取消收藏" : "收藏";
@@ -958,7 +1139,17 @@
       return;
     }
     const button = event.target.closest("[data-bank-open-tool]");
-    if (button) $('[data-tool="' + button.dataset.bankOpenTool + '"]').click();
+    if (button) {
+      const item = currentQuestion();
+      const calculator = item && (item.calculator || inferCalculatorSpec(item));
+      if (window.ControlCalculatorBridge && typeof window.ControlCalculatorBridge.open === "function") {
+        window.ControlCalculatorBridge.open(button.dataset.bankOpenTool, calculator, item ? { id: item.id, question: item.question } : null);
+      } else {
+        window.ControlQuestionContext = item ? { id: item.id, question: item.question } : null;
+        const target = $('[data-tool="' + button.dataset.bankOpenTool + '"]');
+        if (target) target.click();
+      }
+    }
   });
   $("#practice-question-card").addEventListener("input", (event) => {
     const note = event.target.closest("[data-bank-wrong-note]");

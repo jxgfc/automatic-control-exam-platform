@@ -32,7 +32,7 @@ const PUBLIC_ROOT_FILES = new Set([
   "index.html", "login.html", "admin.html", "styles.css",
   "app.js", "account.js", "advanced-core.js", "advanced-platform.js", "control-core.js", "solver.js",
   "syllabus-data.js", "theory-data.js", "question-bank-data.js", "knowledge-tree-data.js",
-  "platform.js", "ai-question-bank.js", "knowledge-tree.js", "site-profile.js", "personal-home.js",
+  "platform.js", "ai-question-bank.js", "knowledge-tree.js", "site-profile.js", "personal-home.js", "transfer-keypad.js",
   "admin.js", "auth-gate.js", "calculator-root-locus-desktop.png", "PERSONAL-SITE.md"
 ]);
 const PUBLIC_VENDOR_FILES = new Set([
@@ -337,8 +337,9 @@ function buildPrompt(criteria) {
     extra ? "附加要求：" + extra + "。" : "",
     "每题必须条件充分、答案唯一，计算题给出可复核的中间步骤；使用中国高校自动控制原理常用符号。",
     "题干、答案和解析中的全部数学公式必须使用LaTeX：行内公式写成$...$，独立公式写成$$...$$；分式使用\\frac，上下标使用_与^，矩阵使用bmatrix。中文说明不要放进公式定界符。",
+    "若题目属于可计算题型，尽量附带calculator字段以便学习者一键带入：tool只能是root-locus、routh、frequency、nyquist、steady-error、second-order、discrete、state-space之一；inputs只填写题干中明确给出的numerator、denominator、polynomial、zeta、wn、minimum、maximum、inputType、amplitude、mode、a、b、c、d等参数。无法确定时省略calculator，禁止猜测参数。",
     "仅返回JSON，不要Markdown。结构必须为：",
-    '{"questions":[{"chapter":"章节","type":"题型","difficulty":"难度","question":"题目","answer":"最终答案","analysis":"完整解析","keywords":["关键词"]}]}'
+    '{"questions":[{"chapter":"章节","type":"题型","difficulty":"难度","question":"题目","answer":"最终答案","analysis":"完整解析","keywords":["关键词"],"calculator":{"tool":"root-locus","inputs":{"numerator":"1","denominator":"s(s+2)(s+4)"}}}]}'
   ].filter(Boolean).join("\n");
 }
 
@@ -482,6 +483,7 @@ function parseGeneratedQuestions(text, expectedCount) {
     const answer = normalizeFormulaArtifacts(cleanText(item.answer, 4000));
     const analysis = normalizeFormulaArtifacts(cleanText(item.analysis, 8000));
     if (!question || !answer || !analysis) throw new Error("第" + (index + 1) + "道AI题缺少题目、答案或解析");
+    const calculator = sanitizeCalculatorSpec(item.calculator || item.calculatorSpec || item.toolSpec);
     return {
       id: "AI-" + Date.now() + "-" + index,
       chapter: cleanText(item.chapter, 40) || "综合",
@@ -492,9 +494,28 @@ function parseGeneratedQuestions(text, expectedCount) {
       answer,
       analysis,
       keywords: Array.isArray(item.keywords) ? item.keywords.slice(0, 8).map((value) => cleanText(value, 30)).filter(Boolean) : [],
-      source: "AI原创生成"
+      source: "AI原创生成",
+      ...(calculator ? { calculator } : {})
     };
   });
+}
+
+// Optional calculator metadata is model supplied JSON. Keep it bounded and
+// data-only; the browser performs the final per-tool validation before use.
+function sanitizeCalculatorSpec(value, depth) {
+  const level = depth || 0;
+  if (level > 3 || value == null) return null;
+  if (typeof value === "string") return value.slice(0, 800);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (Array.isArray(value)) return value.slice(0, 40).map((item) => sanitizeCalculatorSpec(item, level + 1));
+  if (typeof value !== "object") return null;
+  const result = {};
+  Object.keys(value).slice(0, 30).forEach((key) => {
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(key)) return;
+    const item = sanitizeCalculatorSpec(value[key], level + 1);
+    if (item !== null) result[key] = item;
+  });
+  return Object.keys(result).length ? result : null;
 }
 
 function questionTimeoutMs(count) {
@@ -974,4 +995,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createAppServer, buildPrompt, parseGeneratedQuestions, requestAiQuestions, requestAiModels, modelsEndpointUrl, questionTimeoutMs, isMicuChatModel };
+module.exports = { createAppServer, buildPrompt, parseGeneratedQuestions, sanitizeCalculatorSpec, requestAiQuestions, requestAiModels, modelsEndpointUrl, questionTimeoutMs, isMicuChatModel };
