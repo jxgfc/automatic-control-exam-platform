@@ -4420,6 +4420,8 @@ body:not(:has(.personal-site-home)) {
     radial-gradient(circle at 4% 0%, rgba(93, 184, 158, .22), transparent 31rem),
     radial-gradient(circle at 98% 4%, rgba(100, 140, 205, .16), transparent 29rem),
     linear-gradient(155deg, #edf6f2 0%, #edf3f7 54%, #e8f0ed 100%);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .app-header {

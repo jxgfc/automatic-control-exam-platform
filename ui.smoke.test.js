@@ -87,6 +87,10 @@ let browser;
   await page.waitForSelector("#frequency-result .bode-plot svg");
   assert.equal(await page.locator("#frequency-numerator + .transfer-keypad-trigger").count(), 1);
   await page.locator("#frequency-numerator + .transfer-keypad-trigger").click();
+  await page.waitForFunction(() => {
+    const keypad = document.querySelector(".transfer-keypad-popover");
+    return keypad && !keypad.hidden;
+  });
   assert.equal(await page.locator(".transfer-keypad-popover").isVisible(), true);
   await page.locator(".transfer-keypad-grid [data-tkp-value='7']").click();
   assert.match(await page.locator("#frequency-numerator").inputValue(), /17/);
