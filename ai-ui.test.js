@@ -1,9 +1,9 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const path = require("node:path");
 const { chromium } = require("playwright");
 const { createAppServer } = require("./server.js");
+const { screenshotPath } = require("./ui-test-artifacts");
 
 let browser;
 let server;
@@ -106,10 +106,10 @@ let server;
   await page.locator("#ai-count").selectOption("3");
   assert.match(await page.locator("#ai-model-status").innerText(), /容易触发上游500/);
   await page.locator("#ai-count").selectOption("1");
-  await page.screenshot({ path: path.join(__dirname, "calculator-ai-micu-key-only-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-ai-micu-key-only-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), false);
-  await page.screenshot({ path: path.join(__dirname, "calculator-ai-micu-key-only-mobile.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-ai-micu-key-only-mobile.png"), fullPage: true });
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.locator("#ai-provider").selectOption("relay");
   assert.equal(await page.locator("#ai-preset-note").isVisible(), false);
@@ -171,13 +171,13 @@ let server;
   await page.locator("#bank-reveal").click();
   assert.equal(await page.locator("[data-bank-wrong-note]").inputValue(), "忽略了闭环特征方程");
 
-  await page.screenshot({ path: path.join(__dirname, "calculator-ai-question-bank-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-ai-question-bank-desktop.png"), fullPage: true });
   await page.locator('[data-bank-workspace-view="analysis"]').click();
-  await page.screenshot({ path: path.join(__dirname, "calculator-mastery-analysis-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-mastery-analysis-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   assert.equal(overflow, false);
-  await page.screenshot({ path: path.join(__dirname, "calculator-mastery-analysis-mobile.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-mastery-analysis-mobile.png"), fullPage: true });
   assert.deepEqual(consoleErrors, []);
 
   await browser.close();

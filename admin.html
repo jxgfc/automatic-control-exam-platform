@@ -5,61 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>管理后台 · 自动控制学习站</title>
   <style>
-    :root { font-family: Inter, "Microsoft YaHei", sans-serif; color: #1d2529; background: #f4f2ed; }
+    :root { color-scheme: light; font-family: Inter, "Microsoft YaHei UI", "PingFang SC", sans-serif; color: #19302d; background: #edf3f1; }
     * { box-sizing: border-box; }
-    body { margin: 0; }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px clamp(18px, 5vw, 72px); background: #fff; border-bottom: 1px solid #d8d5ce; }
-    header h1 { margin: 0; font-size: clamp(22px, 3vw, 32px); }
-    header p { margin: 6px 0 0; color: #667176; }
-    header a, button { border: 1px solid #c9ced0; border-radius: 3px; padding: 10px 14px; background: #fff; color: #176b65; font: inherit; cursor: pointer; text-decoration: none; }
-    button:disabled { opacity: .55; cursor: wait; }
+    body { min-height: 100svh; margin: 0; background: radial-gradient(circle at 100% 0, rgba(56, 123, 110, .1), transparent 34%), #edf3f1; }
+    header { position: sticky; z-index: 10; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 19px clamp(18px, 5vw, 72px); border-bottom: 1px solid rgba(31, 75, 65, .13); background: rgba(255, 255, 255, .93); box-shadow: 0 8px 24px rgba(24, 67, 57, .05); backdrop-filter: blur(13px); }
+    header h1 { margin: 0; color: #153c39; font-size: clamp(22px, 3vw, 31px); letter-spacing: -.03em; }
+    header p { margin: 6px 0 0; color: #6b7d78; font-size: 13px; }
+    header > div:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    header a, button { min-height: 42px; border: 1px solid #c7d6d0; border-radius: 9px; padding: 9px 14px; background: #fff; color: #176b65; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; transition: background .18s, border-color .18s, transform .18s; }
+    header a:hover, button:hover { border-color: #72a99a; background: #eff8f4; }
+    button:active { transform: translateY(1px); }
+    button:disabled { cursor: wait; opacity: .55; }
+    :where(a, button, input, select):focus-visible { outline: 3px solid rgba(23, 107, 101, .28); outline-offset: 3px; }
     main { width: min(1280px, calc(100% - 36px)); margin: 28px auto 60px; }
-    .message { min-height: 1.5em; color: #a33b32; margin-bottom: 16px; }
+    .message { min-height: 1.5em; margin-bottom: 16px; padding: 0 2px; color: #a33b32; font-size: 13px; }
     .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
-    .stat, .panel { background: #fff; border: 1px solid #d8d5ce; }
-    .stat { padding: 18px; }
-    .stat strong { display: block; font-size: 30px; color: #176b65; }
-    .stat span { color: #667176; font-size: 13px; }
-    .panel { padding: 20px; margin-top: 18px; overflow: hidden; }
-    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-    .panel-heading h2 { margin: 0; font-size: 19px; }
-    .panel-heading p { margin: 5px 0 0; color: #667176; font-size: 13px; }
-    .form-row { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
-    label { display: grid; gap: 6px; color: #667176; font-size: 13px; }
-    input, select { min-width: 130px; border: 1px solid #c9ced0; border-radius: 3px; padding: 10px; font: inherit; background: #fff; }
-    .primary { background: #176b65; color: #fff; border-color: #176b65; }
-    .table-scroll { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 640px; }
-    th, td { padding: 11px 10px; border-top: 1px solid #e5e2dc; text-align: left; font-size: 14px; white-space: nowrap; }
-    th { color: #667176; font-size: 12px; font-weight: 600; }
-    td code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
+    .stat, .panel { border: 1px solid rgba(35, 82, 71, .15); border-radius: 13px; background: rgba(255, 255, 255, .93); box-shadow: 0 10px 26px rgba(25, 67, 57, .06); }
+    .stat { min-height: 110px; display: grid; align-content: center; gap: 6px; padding: 18px; }
+    .stat strong { display: block; color: #176b65; font-size: 30px; letter-spacing: -.03em; }
+    .stat span { color: #6c7e79; font-size: 12px; }
+    .panel { padding: 21px; margin-top: 18px; overflow: hidden; }
+    .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+    .panel-heading h2 { margin: 0; color: #183d3a; font-size: 19px; letter-spacing: -.02em; }
+    .panel-heading p { margin: 6px 0 0; color: #6c7e79; font-size: 12px; line-height: 1.6; }
+    .form-row { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 14px; }
+    label { display: grid; gap: 7px; color: #5b706a; font-size: 12px; font-weight: 700; }
+    input, select { min-width: 130px; min-height: 44px; border: 1px solid #c6d4cf; border-radius: 8px; padding: 9px 11px; color: #19302d; font: inherit; background: #fcfefd; }
+    input:hover, select:hover { border-color: #85afa3; }
+    input:focus, select:focus { border-color: #176b65; outline: 0; box-shadow: 0 0 0 4px rgba(23, 107, 101, .11); }
+    .primary { border-color: #176b65; color: #fff; background: #176b65; }
+    .primary:hover { border-color: #0f513b; color: #fff; background: #0f513b; }
+    .table-scroll { overflow-x: auto; border: 1px solid #e1eae6; border-radius: 9px; }
+    table { width: 100%; min-width: 640px; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-top: 1px solid #e5ece9; text-align: left; font-size: 13px; white-space: nowrap; }
+    tr:first-child th, tr:first-child td { border-top: 0; }
+    tbody tr:hover { background: #f5faf8; }
+    th { color: #667b75; background: #f7faf9; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+    td code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
     .label-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
-    .status { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 12px; }
+    .status { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 700; }
     .status-available { color: #146c43; background: #e3f4e9; }
     .status-used { color: #667176; background: #eef0f1; }
     .status-expired { color: #a33b32; background: #fbe9e6; }
-    .empty { color: #667176; text-align: center; }
+    .empty { padding: 22px; color: #667176; text-align: center; }
     .user-search { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 14px; }
     .user-search label { flex: 1 1 260px; }
     .user-search input, .user-search select { width: 100%; }
-    .user-count { color: #667176; font-size: 13px; }
-    .user-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; color: #667176; font-size: 13px; }
+    .user-count { color: #667176; font-size: 12px; }
+    .user-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; color: #667176; font-size: 12px; }
     .user-pagination-actions { display: flex; gap: 8px; }
-    .generated-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; color: #667176; font-size: 13px; }
+    .generated-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; color: #667176; font-size: 12px; }
     .copy-status { color: #176b65; }
-    pre { white-space: pre-wrap; word-break: break-word; background: #f4f2ed; padding: 12px; margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    pre { max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #e0e9e5; border-radius: 9px; background: #f5f9f7; padding: 13px; margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
     @media (max-width: 960px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-    @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } header { align-items: flex-start; flex-direction: column; } main { width: min(100% - 24px, 1280px); margin-top: 16px; } .panel { padding: 14px; } .form-row label, .form-row input { width: 100%; } }
+    @media (max-width: 720px) {
+      header { align-items: flex-start; flex-direction: column; padding: 17px 16px; }
+      header > div:last-child { width: 100%; justify-content: flex-start; }
+      main { width: min(100% - 24px, 1280px); margin-top: 16px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .stat { min-height: 94px; padding: 14px; }
+      .stat strong { font-size: 25px; }
+      .panel { padding: 15px; border-radius: 11px; }
+      .panel-heading { flex-direction: column; }
+      .panel-heading > button { align-self: stretch; }
+      .form-row label, .form-row input, .form-row select, .form-row button { width: 100%; }
+      .user-search > button { flex: 1 1 130px; }
+      .user-pagination { align-items: stretch; flex-direction: column; }
+      .user-pagination-actions button { flex: 1; }
+    }
+    @media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr; } .stats .stat { min-height: 83px; } .stats .stat span { font-size: 11px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
   </style>
 </head>
 <body>
-  <header><div><h1>管理后台</h1><p>用户、题库与激活码管理</p></div><div><a href="/">返回学习站</a> <button id="logout" type="button">退出登录</button></div></header>
-  <main>
+  <header><div><h1 id="admin-page-title">管理后台</h1><p>用户、题库与激活码管理</p></div><div><a href="/">返回学习站</a> <button id="logout" type="button">退出登录</button></div></header>
+  <main aria-labelledby="admin-page-title">
     <div class="message" id="message" role="alert"></div>
     <section class="stats" aria-label="站点统计"><div class="stat"><strong id="user-total">--</strong><span>注册用户</span></div><div class="stat"><strong id="question-total">--</strong><span>云端 AI 题目</span></div><div class="stat"><strong id="code-available">--</strong><span>可用激活码</span></div><div class="stat"><strong id="code-used">--</strong><span>已使用激活码</span></div><div class="stat"><strong id="code-expired">--</strong><span>已过期激活码</span></div></section>
-    <section class="panel"><div class="panel-heading"><h2>发放激活码</h2><button id="refresh" type="button">刷新数据</button></div><div class="form-row"><label>数量<input id="code-count" type="number" min="1" max="100" value="10"></label><label>有效天数<input id="code-days" type="number" min="0" max="3650" value="30"></label><label>批次标签<input id="code-label" maxlength="120" placeholder="例如 2026 秋季用户"></label><button class="primary" id="generate" type="button">生成激活码</button></div><div id="generated-wrap" hidden><div class="generated-toolbar"><span>本次生成的完整激活码</span><button id="copy-generated" type="button">复制全部</button><span class="copy-status" id="copy-status" role="status"></span></div><pre id="generated"></pre></div></section>
-    <section class="panel"><div class="panel-heading"><div><h2>激活码状态</h2><p>可按批次、提示或状态筛选，分页查询不会遗漏历史数据。</p></div></div><div class="user-search code-search"><label>搜索激活码或批次<input id="code-search" type="search" autocomplete="off" placeholder="输入提示或批次名称"></label><label>状态<select id="code-status"><option value="all">全部</option><option value="available">可使用</option><option value="used">已使用</option><option value="expired">已过期</option></select></label><button id="code-search-button" class="primary" type="button">筛选</button><button id="code-clear-button" type="button">清除</button></div><div class="table-scroll"><table><thead><tr><th scope="col">ID</th><th scope="col">提示</th><th scope="col">批次</th><th scope="col">状态</th><th scope="col">过期时间</th><th scope="col">操作</th></tr></thead><tbody id="codes"></tbody></table></div><div class="user-pagination"><span id="code-page-status"></span><div class="user-pagination-actions"><button id="code-prev" type="button">上一页</button><button id="code-next" type="button">下一页</button></div></div></section>
-    <section class="panel"><div class="panel-heading"><div><h2>用户管理</h2><p>仅显示账号运营信息，不显示密码或会话令牌。</p></div><span class="user-count" id="user-result-count"></span></div><div class="user-search"><label>搜索账号<input id="user-search" name="user-search" type="search" autocomplete="off" placeholder="输入用户名，留空显示全部"></label><button id="user-search-button" class="primary" type="button">搜索用户</button><button id="user-clear-button" type="button">清除</button></div><div class="table-scroll"><table><thead><tr><th scope="col">ID</th><th scope="col">账号</th><th scope="col">注册时间</th><th scope="col">激活码</th><th scope="col">批次</th><th scope="col">最近活跃</th><th scope="col">在线会话</th><th scope="col">操作</th></tr></thead><tbody id="users"></tbody></table></div><div class="user-pagination"><span id="user-page-status"></span><div class="user-pagination-actions"><button id="user-prev" type="button">上一页</button><button id="user-next" type="button">下一页</button></div></div></section>
+    <section class="panel"><div class="panel-heading"><h2>发放激活码</h2><button id="refresh" type="button">刷新数据</button></div><div class="form-row"><label for="code-count">数量<input id="code-count" type="number" min="1" max="100" value="10"></label><label for="code-days">有效天数<input id="code-days" type="number" min="0" max="3650" value="30"></label><label for="code-label">批次标签<input id="code-label" maxlength="120" placeholder="例如 2026 秋季用户"></label><button class="primary" id="generate" type="button">生成激活码</button></div><div id="generated-wrap" hidden><div class="generated-toolbar"><span>本次生成的完整激活码</span><button id="copy-generated" type="button">复制全部</button><span class="copy-status" id="copy-status" role="status"></span></div><pre id="generated"></pre></div></section>
+    <section class="panel"><div class="panel-heading"><div><h2>激活码状态</h2><p>可按批次、提示或状态筛选，分页查询不会遗漏历史数据。</p></div></div><div class="user-search code-search"><label for="code-search">搜索激活码或批次<input id="code-search" type="search" autocomplete="off" placeholder="输入提示或批次名称"></label><label for="code-status">状态<select id="code-status"><option value="all">全部</option><option value="available">可使用</option><option value="used">已使用</option><option value="expired">已过期</option></select></label><button id="code-search-button" class="primary" type="button">筛选</button><button id="code-clear-button" type="button">清除</button></div><div class="table-scroll"><table><caption class="sr-only">激活码状态列表</caption><thead><tr><th scope="col">ID</th><th scope="col">提示</th><th scope="col">批次</th><th scope="col">状态</th><th scope="col">过期时间</th><th scope="col">操作</th></tr></thead><tbody id="codes"></tbody></table></div><div class="user-pagination"><span id="code-page-status"></span><div class="user-pagination-actions"><button id="code-prev" type="button">上一页</button><button id="code-next" type="button">下一页</button></div></div></section>
+    <section class="panel"><div class="panel-heading"><div><h2>用户管理</h2><p>仅显示账号运营信息，不显示密码或会话令牌。</p></div><span class="user-count" id="user-result-count"></span></div><div class="user-search"><label for="user-search">搜索账号<input id="user-search" name="user-search" type="search" autocomplete="off" placeholder="输入用户名，留空显示全部"></label><button id="user-search-button" class="primary" type="button">搜索用户</button><button id="user-clear-button" type="button">清除</button></div><div class="table-scroll"><table><caption class="sr-only">用户账号列表</caption><thead><tr><th scope="col">ID</th><th scope="col">账号</th><th scope="col">注册时间</th><th scope="col">激活码</th><th scope="col">批次</th><th scope="col">最近活跃</th><th scope="col">在线会话</th><th scope="col">操作</th></tr></thead><tbody id="users"></tbody></table></div><div class="user-pagination"><span id="user-page-status"></span><div class="user-pagination-actions"><button id="user-prev" type="button">上一页</button><button id="user-next" type="button">下一页</button></div></div></section>
   </main>
   <script src="admin.js"></script>
 </body>

@@ -5,33 +5,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录 · 自动控制学习站</title>
   <style>
-    :root { color-scheme: light; font-family: Inter, "Microsoft YaHei", sans-serif; background: #f4f2ed; color: #1d2529; }
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      color: #162b2b;
+      background: #e8f1ee;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-    main { width: min(430px, 100%); background: #fff; border: 1px solid #d8d5ce; padding: 32px; box-shadow: 0 18px 50px rgba(28, 35, 38, .11); }
-    .eyebrow { margin: 0 0 10px; color: #176b65; font-size: 12px; letter-spacing: .12em; }
-    h1 { margin: 0 0 10px; font-size: 26px; }
-    .intro { margin: 0 0 24px; color: #667176; line-height: 1.7; }
-    label { display: grid; gap: 7px; margin: 14px 0; font-size: 14px; font-weight: 600; }
-    input { width: 100%; border: 1px solid #c9ced0; border-radius: 3px; padding: 12px; font: inherit; }
-    button { border: 0; border-radius: 3px; padding: 12px 16px; font: inherit; cursor: pointer; }
-    .primary { width: 100%; background: #176b65; color: #fff; margin-top: 8px; }
-    .secondary { width: 100%; background: transparent; color: #176b65; margin-top: 10px; }
-    .error { color: #a33b32; margin: 12px 0; line-height: 1.5; font-size: 14px; }
-    .status { min-height: 1.4em; color: #667176; font-size: 13px; }
+    body {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      padding: clamp(18px, 5vw, 48px);
+      background:
+        radial-gradient(circle at 9% 8%, rgba(47, 135, 111, .16), transparent 34%),
+        radial-gradient(circle at 94% 96%, rgba(47, 98, 131, .16), transparent 36%),
+        #e8f1ee;
+    }
+    main {
+      width: min(456px, 100%);
+      padding: clamp(28px, 6vw, 46px);
+      border: 1px solid rgba(36, 83, 71, .16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .94);
+      box-shadow: 0 24px 70px rgba(21, 59, 51, .14);
+    }
+    .login-brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 30px; color: #176b65; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+    .brand-mark { display: grid; width: 35px; height: 35px; place-items: center; border-radius: 11px; color: #fff; background: linear-gradient(145deg, #176b65, #2f8590); font-size: 17px; letter-spacing: 0; box-shadow: 0 7px 15px rgba(23, 107, 101, .2); }
+    .eyebrow { margin: 0 0 11px; color: #176b65; font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+    h1 { margin: 0 0 11px; color: #122b2d; font-size: clamp(25px, 5vw, 31px); letter-spacing: -.03em; line-height: 1.2; }
+    .intro { margin: 0 0 26px; color: #637572; font-size: 14px; line-height: 1.75; }
+    label { display: grid; gap: 8px; margin: 17px 0; color: #344c48; font-size: 13px; font-weight: 700; }
+    input { width: 100%; min-height: 48px; border: 1px solid #c4d1cc; border-radius: 9px; padding: 11px 13px; color: #162b2b; background: #fbfdfc; font: inherit; transition: border-color .18s, box-shadow .18s, background .18s; }
+    input:hover { border-color: #9fb9af; }
+    input:focus { border-color: #176b65; outline: 0; background: #fff; box-shadow: 0 0 0 4px rgba(23, 107, 101, .13); }
+    button { min-height: 46px; border: 0; border-radius: 9px; padding: 11px 16px; font: inherit; font-weight: 700; cursor: pointer; transition: transform .18s, background .18s, box-shadow .18s; }
+    button:focus-visible { outline: 3px solid rgba(23, 107, 101, .3); outline-offset: 3px; }
+    button:active { transform: translateY(1px); }
+    button:disabled { cursor: wait; opacity: .64; }
+    .primary { width: 100%; margin-top: 12px; color: #fff; background: #176b65; box-shadow: 0 10px 22px rgba(23, 107, 101, .18); }
+    .primary:hover { background: #0f513b; box-shadow: 0 13px 26px rgba(23, 107, 101, .24); }
+    .secondary { width: 100%; margin-top: 11px; color: #176b65; background: transparent; }
+    .secondary:hover { background: #edf7f3; }
+    .error { margin: 14px 0 2px; padding: 11px 13px; border: 1px solid #ecc9c4; border-radius: 8px; color: #92382f; background: #fff4f2; font-size: 13px; line-height: 1.55; }
+    .status { min-height: 1.4em; margin: 15px 0 0; color: #6a7e79; font-size: 12px; text-align: center; }
     .activation { display: none; }
     .activation.is-visible { display: grid; }
+    @media (max-width: 420px) {
+      body { place-items: start center; padding: 12px; }
+      main { margin-top: 2vh; padding: 27px 21px 24px; border-radius: 14px; }
+      .login-brand { margin-bottom: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
   </style>
 </head>
 <body>
-  <main>
-    <p class="eyebrow">CONTROL STUDY SPACE</p>
+  <main aria-labelledby="title">
+    <div class="login-brand"><span class="brand-mark" aria-hidden="true">控</span><span>CONTROL STUDY SPACE</span></div>
     <h1 id="title">登录后继续</h1>
     <p class="intro">这是受邀请的自动控制学习站。请使用账号登录；新用户需要管理员发放的激活码。</p>
     <form id="gate-form">
-      <label>账号<input id="username" autocomplete="username" required minlength="3" maxlength="64"></label>
-      <label>密码<input id="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label>
-      <label class="activation" id="activation-wrap">激活码<input id="activation" autocomplete="one-time-code" placeholder="ABCD-EFGH-IJKL" maxlength="40"></label>
+      <label for="username">账号<input id="username" autocomplete="username" required minlength="3" maxlength="64"></label>
+      <label for="password">密码<input id="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label>
+      <label class="activation" id="activation-wrap" for="activation">激活码<input id="activation" autocomplete="one-time-code" placeholder="ABCD-EFGH-IJKL" maxlength="40"></label>
       <div class="error" id="error" role="alert" hidden></div>
       <button class="primary" id="submit" type="submit">登录</button>
     </form>

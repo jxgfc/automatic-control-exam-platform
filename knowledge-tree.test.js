@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const { chromium } = require("playwright");
 const { createAppServer } = require("./server.js");
+const { screenshotPath } = require("./ui-test-artifacts");
 
 let browser;
 let server;
@@ -66,7 +67,7 @@ let server;
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('[data-tool="knowledge-tree"]').click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), false);
-  await page.screenshot({ path: "knowledge-tree-mobile.png", fullPage: true });
+  await page.screenshot({ path: screenshotPath("knowledge-tree-mobile.png"), fullPage: true });
   assert.deepEqual(consoleErrors, []);
 
   await browser.close();

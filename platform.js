@@ -95,11 +95,10 @@
     document.querySelectorAll(".module-link").forEach((button) => {
       button.classList.toggle("active", button.dataset.tool === toolId);
     });
-    // Keep tool navigation inside the learning platform. The personal home is
-    // the document's first section, so scrolling to document top here makes
-    // every platform click look like a reset to the homepage.
+    // Entering from the personal home should reveal the selected tool. Once
+    // the user is already inside the platform, keep their reading position.
     const platform = document.querySelector("#learning-platform") || document.querySelector(".platform-header");
-    if (platform) {
+    if (platform && window.scrollY + 24 < platform.getBoundingClientRect().top + window.scrollY) {
       platform.scrollIntoView({ behavior: "auto", block: "start" });
     }
   }

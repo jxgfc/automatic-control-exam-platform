@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { chromium } = require("playwright");
+const { screenshotPath } = require("./ui-test-artifacts");
 
 let browser;
 
@@ -87,7 +88,7 @@ let browser;
   assert.match(await page.locator("#frequency-result").innerText(), /51\.827/);
   assert.match(await page.locator("#frequency-result").innerText(), /0\.7861/);
   assert.equal(await page.locator("#frequency-result .bode-plot path").count(), 2);
-  await page.screenshot({ path: path.join(__dirname, "calculator-frequency-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-frequency-desktop.png"), fullPage: true });
 
   await page.locator('[data-tool="modeling"]').click();
   await page.waitForSelector("#modeling-result .result-summary-band");
@@ -165,7 +166,7 @@ let browser;
   assert.match(await page.locator("#state-result").innerText(), /P正定/);
   await page.locator("#state-mode").selectOption("feedback");
   await page.locator("#state-calculate").click();
-  await page.screenshot({ path: path.join(__dirname, "calculator-state-space-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-state-space-desktop.png"), fullPage: true });
 
   await page.locator('[data-tool="theory"]').click();
   const visibleTheoryCount = await page.evaluate(() => {
@@ -199,20 +200,20 @@ let browser;
   await page.locator("#example-select").selectOption("complex-poles");
   assert.match(await page.locator("#tool-root-locus .answer-value strong").first().innerText(), /-2\.82601/);
   assert.match(await page.locator("#tool-root-locus .root-geometry-grid").innerText(), /复极点出射角/);
-  await page.screenshot({ path: path.join(__dirname, "calculator-root-locus-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-root-locus-desktop.png"), fullPage: true });
 
   await page.locator('[data-tool="overview"]').click();
   await page.locator("#school-profile").selectOption("all");
-  await page.screenshot({ path: path.join(__dirname, "calculator-preview-desktop.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-preview-desktop.png"), fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   assert.equal(overflow, false, "mobile viewport must not overflow horizontally");
-  await page.screenshot({ path: path.join(__dirname, "calculator-preview-mobile.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-preview-mobile.png"), fullPage: true });
   await page.locator('[data-tool="routh"]').click();
   const routhOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   assert.equal(routhOverflow, false, "mobile Routh calculator must not overflow horizontally");
-  await page.screenshot({ path: path.join(__dirname, "calculator-routh-mobile.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-routh-mobile.png"), fullPage: true });
   await page.locator('[data-tool="frequency"]').click();
   const frequencyOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   assert.equal(frequencyOverflow, false, "mobile frequency calculator must not overflow horizontally");
@@ -222,7 +223,7 @@ let browser;
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     assert.equal(hasOverflow, false, `mobile ${tool} tool must not overflow horizontally`);
   }
-  await page.screenshot({ path: path.join(__dirname, "calculator-theory-mobile.png"), fullPage: true });
+  await page.screenshot({ path: screenshotPath("calculator-theory-mobile.png"), fullPage: true });
 
   assert.deepEqual(consoleErrors, []);
   await browser.close();
