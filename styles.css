@@ -4257,7 +4257,7 @@ input:focus,
   scrollbar-width: thin;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1120px) {
   .question-reading-layout {
     grid-template-columns: 1fr;
   }
