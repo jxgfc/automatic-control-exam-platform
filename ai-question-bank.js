@@ -775,8 +775,11 @@
     const calculatorContext = !showCalculatorContext ? "" : calculator
       ? '<div class="question-calculator-context"><div><strong>已识别计算参数</strong><span>' + escapeHtml(calculator.source || "可带入对应计算器") + " · " + escapeHtml(calculator.tool) + '</span></div><button type="button" class="table-tool-button" data-bank-open-tool="' + escapeHtml(calculator.tool) + '">带入并打开计算器</button></div>'
       : '<div class="question-calculator-context is-unavailable"><div><strong>暂未识别可带入参数</strong><span>这道题适合先阅读题干与解析；如需计算，请手动填写计算器输入。</span></div></div>';
+    const questionReview = answerVisible ? '<aside class="question-context-summary" aria-label="题干回顾"><div class="question-context-summary-heading"><span>题干回顾</span><button type="button" class="text-button" data-question-jump="stem">回到题目</button></div><div class="question-context-summary-body math-content">' + examText(item.question) + '</div></aside>' : "";
     const solution = answerVisible ? '<div class="practice-solution"><h4>参考答案</h4><div class="solution-answer math-content">' + examText(item.answer) + '</div><h4>解析</h4><div class="solution-analysis math-content">' + examText(item.analysis) + '</div><div class="keyword-list">' + keywords + "</div>" + (calculator ? '<button type="button" class="table-tool-button" data-bank-open-tool="' + escapeHtml(calculator.tool) + '">带入并打开计算器</button>' : tool ? '<button type="button" class="table-tool-button" data-bank-open-tool="' + tool + '">打开对应计算器</button>' : "") + assessment + wrongNote + "</div>" : '<div class="answer-placeholder">完成作答后再展开答案与解析</div>';
-    $("#practice-question-card").innerHTML = '<div class="exam-paper-heading"><div><strong>第 ' + (queueIndex + 1) + ' 题</strong><span>（本题 ' + suggestedScore(item) + ' 分）</span></div><small>' + escapeHtml(item.source) + " · " + (queueIndex + 1) + " / " + queue.length + '</small></div><div class="practice-tags">' + tags + "</div>" + calculatorContext + visual + wrongMeta + '<div class="exam-question-body math-content">' + examText(item.question) + '</div><label class="field practice-answer-field"><span class="exam-answer-label">解：</span><textarea id="bank-user-answer" rows="6" placeholder="在此书写解题过程"></textarea></label>' + solution;
+    const questionStem = '<section class="question-stem-pane" id="question-stem"><div class="question-pane-heading"><span>题目</span><small>先独立作答，再查看右侧解析</small></div>' + visual + wrongMeta + '<div class="exam-question-body math-content">' + examText(item.question) + '</div><label class="field practice-answer-field"><span class="exam-answer-label">解：</span><textarea id="bank-user-answer" rows="6" placeholder="在此书写解题过程"></textarea></label></section>';
+    const answerPane = '<section class="question-answer-pane"><div class="question-pane-heading"><span>答案与解析</span><small>' + (answerVisible ? "已展开 · 可随时回看题干" : "点击下方按钮展开") + '</small></div>' + questionReview + solution + '</section>';
+    $("#practice-question-card").innerHTML = '<div class="exam-paper-heading"><div><strong>第 ' + (queueIndex + 1) + ' 题</strong><span>（本题 ' + suggestedScore(item) + ' 分）</span></div><small>' + escapeHtml(item.source) + " · " + (queueIndex + 1) + ' / ' + queue.length + '</small></div><div class="practice-tags">' + tags + "</div>" + calculatorContext + '<div class="question-reading-layout">' + questionStem + answerPane + '</div>';
     if (options) $(".exam-question-body", $("#practice-question-card")).insertAdjacentHTML("beforeend", options);
     $("#bank-user-answer").value = drafts.get(item.id) || "";
     renderExamMath($("#practice-question-card"));
@@ -1132,6 +1135,12 @@
     $("#bank-clear-history").hidden = true;
   });
   $("#practice-question-card").addEventListener("click", (event) => {
+    const jump = event.target.closest("[data-question-jump]");
+    if (jump) {
+      const stem = $("#question-stem", $("#practice-question-card"));
+      if (stem) stem.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     const ratingButton = event.target.closest("[data-bank-rating]");
     if (ratingButton) {
       const item = currentQuestion();

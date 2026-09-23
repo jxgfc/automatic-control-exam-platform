@@ -139,6 +139,23 @@ let server;
   await page.locator("#bank-reveal").click();
   assert.ok(await page.locator(".solution-answer .katex").count() >= 1);
   assert.ok(await page.locator(".solution-analysis .katex").count() >= 2);
+  // Long solutions should remain readable beside a persistent stem. The
+  // question context summary is duplicated in the answer rail so the stem is
+  // still identifiable after scrolling through a lengthy derivation.
+  assert.equal(await page.locator(".question-reading-layout").count(), 1);
+  assert.equal(await page.locator(".question-stem-pane").count(), 1);
+  assert.equal(await page.locator(".question-answer-pane").count(), 1);
+  assert.equal(await page.locator(".question-context-summary").count(), 1);
+  assert.match(await page.locator(".question-context-summary").innerText(), /题干回顾/);
+  const stemLayout = await page.locator(".question-stem-pane").evaluate((node) => ({
+    position: getComputedStyle(node).position,
+    maxHeight: getComputedStyle(node).maxHeight,
+    overflowY: getComputedStyle(node).overflowY
+  }));
+  assert.equal(stemLayout.position, "sticky");
+  assert.notEqual(stemLayout.maxHeight, "none");
+  assert.match(stemLayout.overflowY, /auto|scroll/);
+  await page.locator("[data-question-jump='stem']").click();
   assert.equal(await page.locator(".question-visual").count(), 1);
   assert.ok(await page.locator(".question-plot-point").count() >= 1);
   await page.locator(".question-plot-point").first().click({ force: true });

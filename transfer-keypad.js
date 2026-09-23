@@ -135,7 +135,12 @@
       if (state.panel && !state.panel.hidden && !state.panel.contains(event.target) && !event.target.closest(".transfer-keypad-trigger")) hide();
     });
     window.addEventListener("resize", hide);
-    window.addEventListener("scroll", hide, true);
+    // Keep the keypad open while the trigger is being scrolled into view. A
+    // click on an off-screen field causes the browser to emit a scroll event
+    // before the click handler runs; hiding on every scroll used to close the
+    // newly opened keypad immediately (especially after switching tools).
+    // The panel is fixed to the viewport, and the outside-click handler still
+    // provides an explicit way to dismiss it.
   }
 
   root.TransferKeypad = { install, attach, hide };
