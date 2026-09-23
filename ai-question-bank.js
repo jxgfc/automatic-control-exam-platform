@@ -420,7 +420,6 @@
             <div class="bank-workspace-tabs" role="tablist" aria-label="题库视图"><button type="button" class="is-active" data-bank-workspace-view="practice" aria-selected="true">练习</button><button type="button" data-bank-workspace-view="analysis" aria-selected="false">掌握分析</button></div>
             <div data-bank-workspace-panel="practice">
               <div class="bank-stat-strip" id="bank-stat-strip"></div>
-              <article class="practice-question-card" id="practice-question-card"></article>
               <div class="practice-actions" id="practice-actions" hidden>
                 <button type="button" class="secondary-button" id="bank-previous">上一题</button>
                 <button type="button" class="secondary-button" id="bank-favorite">收藏</button>
@@ -428,6 +427,7 @@
                 <button type="button" class="secondary-button" id="bank-wrong">标记错题</button>
                 <button type="button" class="secondary-button" id="bank-next">下一题</button>
               </div>
+              <article class="practice-question-card" id="practice-question-card"></article>
             </div>
             <section class="mastery-dashboard" id="mastery-dashboard" data-bank-workspace-panel="analysis" hidden></section>
           </section>

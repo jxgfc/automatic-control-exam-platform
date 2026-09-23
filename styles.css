@@ -4665,8 +4665,10 @@ body:not(:has(.personal-site-home)) {
 
 .practice-actions {
   position: sticky;
-  bottom: 16px;
+  top: 10px;
+  bottom: auto;
   z-index: 6;
+  margin-bottom: 14px;
   padding: 9px;
   border: 1px solid rgba(129, 164, 151, .35);
   border-radius: 16px;
@@ -4713,7 +4715,7 @@ body:not(:has(.personal-site-home)) {
   }
   .practice-answer-field { padding: 13px; }
   .practice-solution { padding: 18px 16px; }
-  .practice-actions { bottom: 10px; border-radius: 13px; }
+  .practice-actions { top: 8px; bottom: auto; border-radius: 13px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
