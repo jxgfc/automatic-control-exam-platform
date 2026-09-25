@@ -155,6 +155,12 @@ let server;
   assert.equal(stemLayout.position, "relative");
   assert.equal(stemLayout.maxHeight, "none");
   assert.equal(stemLayout.overflowY, "visible");
+  const contextLayout = await page.locator(".question-context-summary-body").evaluate((node) => ({
+    maxHeight: getComputedStyle(node).maxHeight,
+    overflowY: getComputedStyle(node).overflowY
+  }));
+  assert.equal(contextLayout.maxHeight, "none");
+  assert.equal(contextLayout.overflowY, "visible");
   await page.setViewportSize({ width: 1024, height: 900 });
   const tabletColumns = await page.locator(".question-reading-layout").evaluate((node) => getComputedStyle(node).gridTemplateColumns);
   assert.equal(tabletColumns.split(" ").length, 1, "tablet layout should use one reading column");

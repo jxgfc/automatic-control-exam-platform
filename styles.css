@@ -5297,6 +5297,10 @@ body:has(.personal-site-home) {
    them so the full card width becomes a continuous reading surface. */
 @container (max-width: 900px) {
   .question-reading-layout { grid-template-columns: minmax(0, 1fr); }
+  .question-context-summary {
+    position: static;
+    box-shadow: none;
+  }
 }
 
 .question-stem-pane {
@@ -5307,7 +5311,9 @@ body:has(.personal-site-home) {
 }
 
 .question-context-summary-body {
+  max-height: none;
   overflow-wrap: anywhere;
+  overflow: visible;
 }
 
 /* A chart lives inside a narrow reading pane on large screens.  Let it fit
