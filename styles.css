@@ -5273,3 +5273,48 @@ body:has(.personal-site-home) {
   .personal-hero-aside { width: 100%; min-width: 0; }
   .personal-hero-aside > p { max-width: 100%; }
 }
+
+/* Keep the reading panes inside the question card.  The old 300px/360px
+   minimums exceeded the card width on the 1440px layout and pushed the answer
+   rail outside the card, which made formulas and long Chinese lines appear
+   clipped.  Zero minimums let CSS grid share the available width safely. */
+@media (min-width: 1121px) {
+  .question-reading-layout {
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+  }
+}
+
+.question-answer-pane,
+.question-stem-pane {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.question-bank-workspace { container-type: inline-size; }
+
+/* The platform has a capped width. When the workspace is below 900px, two
+   prose columns squeeze formulas and Chinese text into narrow slivers. Stack
+   them so the full card width becomes a continuous reading surface. */
+@container (max-width: 900px) {
+  .question-reading-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+.question-stem-pane {
+  position: relative;
+  top: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.question-context-summary-body {
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 1041px) {
+  /* Give the actual question more room than its filter form. This prevents
+     formulas and Chinese prose from becoming a narrow newspaper column on
+     wide monitors while keeping the controls comfortably usable. */
+  .question-bank-layout {
+    grid-template-columns: minmax(300px, .58fr) minmax(0, 1.42fr);
+  }
+}

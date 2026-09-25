@@ -139,9 +139,9 @@ let server;
   await page.locator("#bank-reveal").click();
   assert.ok(await page.locator(".solution-answer .katex").count() >= 1);
   assert.ok(await page.locator(".solution-analysis .katex").count() >= 2);
-  // Long solutions should remain readable beside a persistent stem. The
-  // question context summary is duplicated in the answer rail so the stem is
-  // still identifiable after scrolling through a lengthy derivation.
+  // Long solutions remain readable beside a complete stem. The document stays
+  // the only vertical scroller so formulas are never clipped inside a nested
+  // pane; the question context summary still identifies the stem in the rail.
   assert.equal(await page.locator(".question-reading-layout").count(), 1);
   assert.equal(await page.locator(".question-stem-pane").count(), 1);
   assert.equal(await page.locator(".question-answer-pane").count(), 1);
@@ -152,9 +152,9 @@ let server;
     maxHeight: getComputedStyle(node).maxHeight,
     overflowY: getComputedStyle(node).overflowY
   }));
-  assert.equal(stemLayout.position, "sticky");
-  assert.notEqual(stemLayout.maxHeight, "none");
-  assert.match(stemLayout.overflowY, /auto|scroll/);
+  assert.equal(stemLayout.position, "relative");
+  assert.equal(stemLayout.maxHeight, "none");
+  assert.equal(stemLayout.overflowY, "visible");
   await page.setViewportSize({ width: 1024, height: 900 });
   const tabletColumns = await page.locator(".question-reading-layout").evaluate((node) => getComputedStyle(node).gridTemplateColumns);
   assert.equal(tabletColumns.split(" ").length, 1, "tablet layout should use one reading column");
