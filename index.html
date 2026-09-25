@@ -92,6 +92,10 @@
         <article class="personal-note-card"><span>02 · REVIEW</span><h3>把错题变成下一轮计划</h3><p>错题本会记录错因、复习状态和知识点掌握程度，适合考前按薄弱项集中回看。</p><a href="#learning-platform" data-home-tool="question-bank">打开题库 →</a></article>
         <article class="personal-note-card note-stats-card"><span>03 · CURRENT INDEX</span><div class="personal-stat-list"><div><strong data-stat="syllabus">37</strong><span>大纲知识点</span></div><div><strong data-stat="questions">60</strong><span>内置题目</span></div><div><strong data-stat="tree">37</strong><span>知识树节点</span></div></div><p>数据保存在浏览器本地，适合个人长期使用。</p></article>
       </div>
+      <div class="personal-data-tools" aria-label="学习数据备份">
+        <div><strong>学习数据备份</strong><span>把错题、掌握度、知识树进度和 AI 历史题导出到本地，换设备时可以恢复。</span></div>
+        <div class="personal-data-actions"><button type="button" class="personal-secondary-action" data-backup-export>导出学习数据</button><button type="button" class="personal-secondary-action" data-backup-import>导入备份</button><input type="file" data-backup-file accept="application/json,.json" hidden><span data-backup-status role="status" aria-live="polite"></span></div>
+      </div>
     </section>
 
     <section class="personal-about-section" id="about-site" aria-labelledby="about-site-title">
@@ -108,8 +112,8 @@
     </div>
     <div class="header-actions">
       <div class="account-widget" id="account-widget">
-        <button type="button" class="account-button" id="auth-open" aria-expanded="false">登录</button>
-        <div class="account-panel" id="auth-panel" hidden>
+        <button type="button" class="account-button" id="auth-open" aria-expanded="false" aria-controls="auth-panel" aria-haspopup="dialog">登录</button>
+        <div class="account-panel" id="auth-panel" role="dialog" aria-labelledby="auth-title" hidden>
           <div class="account-panel-heading"><strong id="auth-title">账号登录</strong><button type="button" class="icon-button" id="auth-close" aria-label="关闭">×</button></div>
           <form id="auth-form">
             <label class="field"><span>账号</span><input id="auth-username" name="username" autocomplete="username" required minlength="3" maxlength="64"></label>

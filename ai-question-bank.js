@@ -1086,7 +1086,17 @@
       renderQuestion();
       renderMasteryDashboard();
       const notice = generated.find((item) => item.generationNotice)?.generationNotice;
-      generationStatus.textContent = (notice ? notice + " " : "生成完成，") + "用时 " + Math.max(1, Math.round((Date.now() - startedAt) / 1000)) + " 秒";
+      const persistence = payload.persistence || {};
+      const persistenceText = persistence.status === "saved"
+        ? "已同步云端"
+        : persistence.status === "partial"
+          ? "云端部分同步（" + persistence.saved + "/" + persistence.total + "）"
+          : persistence.status === "failed"
+            ? "云端同步失败，已保存在本机"
+            : persistence.status === "unavailable"
+              ? "云端题库未配置，已保存在本机"
+              : "仅保存在本机";
+      generationStatus.textContent = (notice ? notice + " · " : "") + "生成完成，用时 " + Math.max(1, Math.round((Date.now() - startedAt) / 1000)) + " 秒 · " + persistenceText;
     } catch (error) {
       setAiError(error instanceof Error ? error.message : "AI出题失败");
       generationStatus.textContent = "请求结束，用时 " + Math.max(1, Math.round((Date.now() - startedAt) / 1000)) + " 秒";

@@ -48,7 +48,8 @@ stop-ai.cmd
 它只会停止本机 `4173` 端口上的题库服务；如果服务已经停止，会提示“没有正在监听的服务”并正常退出。
 
 - API密钥仅存在于当前页面输入框和本次代理请求，不会写入项目文件或 `localStorage`
-- AI生成题会保存到当前浏览器的“AI历史题库”，最多保留200题
+- AI生成题会保存到当前浏览器的“AI历史题库”，最多保留500题
+- 登录后生成的 AI 题还会在已配置的 PostgreSQL 云端题库中去重保存，方便多设备查询；错题、掌握度和知识树进度仍保存在当前浏览器。
 - 内置题是按考研常见题型编写的原创变式，不复制付费题库原文
 - 本机模型默认采用 OpenAI 兼容地址 `http://127.0.0.1:11434/v1`，可按实际软件修改
 
@@ -145,7 +146,9 @@ npm run test:browser
 - 本地默认服务端口：`4173`；可通过 `PORT` 覆盖。
 - Render 服务端口：由 Render 注入 `PORT`，程序监听 `0.0.0.0`，不要在平台上固定端口。
 - 前端与后端：同一个 Node.js Web 服务，前端静态资源和 `/api/*` 接口均由 `server.js` 提供；不存在独立前端服务端口。
-- 数据库：当前版本不使用数据库，学习记录和题库状态保存在浏览器 `localStorage`；无数据库连接账号或密码需要配置。
-- 环境变量：`NODE_ENV=production` 由 `render.yaml` 设置；页面中的 AI API Key 不写入仓库或 Render 环境变量。
+- 数据库：生产环境使用 PostgreSQL 保存账号、会话、激活码和 AI 生成题；内置题、错题、掌握度和知识树进度继续保存在浏览器 `localStorage`，不会自动迁移旧设备记录。
+- 环境变量：`NODE_ENV=production` 由 `render.yaml` 设置；Render 还需要配置 `DATABASE_URL`、`QUESTION_BANK_ADMIN_TOKEN`、`ACTIVATION_ADMIN_TOKEN`、`ADMIN_USERNAME` 和 `REQUIRE_ACTIVATION=true`。页面中的 AI API Key 不写入仓库或 Render 环境变量。
+
+学习记录可在首页“学习记录”区域导出为 JSON 备份，也可在新设备导入；备份只包含白名单学习数据，不包含 AI API Key、账号密码或会话令牌。
 
 部署成功后可通过 Render 提供的 `https://<service-name>.onrender.com` 公共地址访问，不依赖同一局域网。

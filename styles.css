@@ -55,6 +55,27 @@
   margin: 0 auto;
 }
 
+.personal-data-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-top: 18px;
+  padding: 17px 19px;
+  border: 1px solid rgba(145, 163, 206, .2);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+  backdrop-filter: blur(12px);
+}
+.personal-data-tools > div:first-child { display: grid; gap: 4px; }
+.personal-data-tools strong { color: #253657; font-size: 14px; }
+.personal-data-tools span { color: #72809a; font-size: 12px; line-height: 1.65; }
+.personal-data-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 280px; }
+.personal-data-actions .personal-secondary-action { min-height: 38px; padding: 0 13px; font-size: 12px; }
+.personal-data-actions [data-backup-status] { flex-basis: 100%; min-height: 1.3em; color: #39775f; text-align: right; }
+.personal-data-actions [data-backup-status].is-error { color: #a23b36; }
+
 .personal-nav {
   min-height: 78px;
   display: flex;
@@ -4321,7 +4342,14 @@ footer {
   .header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .header-actions .formula-badge { grid-column: 1 / -1; justify-content: center; }
   .profile-field { min-width: 0; }
-  .account-panel { right: -4px; }
+  /* Keep the account sheet inside the viewport when the widget is in the
+     first grid column. Anchoring to the widget's right edge used to clip the
+     left half of the form on 390px phones. */
+  .account-panel {
+    right: auto;
+    left: 0;
+    width: min(326px, calc(100vw - 40px));
+  }
   .platform-layout { width: calc(100% - 24px); }
   .tool-view { padding: 24px 16px 30px; }
   .tool-titlebar { gap: 15px; margin-bottom: 20px; }
@@ -5179,7 +5207,16 @@ body:has(.personal-site-home) {
 
 @media (max-width: 900px) {
   .personal-nav { top: 8px; margin-top: 8px; }
-  .personal-hero { gap: 52px; padding-top: 84px; }
+  /* The desktop preview track is deliberately wide. Collapse the hero before
+     it can squeeze the copy into an unreadable sliver on tablets. */
+  .personal-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    gap: 52px;
+    padding-top: 84px;
+  }
+  .personal-hero-copy,
+  .personal-hero-aside { width: 100%; min-width: 0; }
   .hero-preview-window img { height: 280px; }
 }
 
@@ -5192,12 +5229,39 @@ body:has(.personal-site-home) {
   .personal-tool-card { min-height: 230px; padding: 20px 18px; border-radius: 20px; }
   .personal-note-card { border-radius: 20px; }
   .personal-about-section { margin-bottom: 36px; padding: 24px 18px; border-radius: 21px; }
+  .personal-data-tools { align-items: stretch; flex-direction: column; gap: 14px; padding: 16px; border-radius: 17px; }
+  .personal-data-actions { min-width: 0; justify-content: flex-start; }
+  .personal-data-actions [data-backup-status] { text-align: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-preview-window,
   .personal-tool-card,
   .personal-primary-action { transition: none; }
+}
+
+/* Respect the platform transparency preference. The glass treatment remains
+   legible as an opaque surface, and disabling the filters also helps older
+   mobile browsers avoid expensive full-page compositing. */
+@media (prefers-reduced-transparency: reduce) {
+  .personal-site-home .personal-nav,
+  .personal-site-home .hero-preview-window,
+  .personal-site-home .preview-window-bar,
+  .personal-site-home .hero-visual-caption,
+  .personal-site-home .personal-intro-band,
+  .personal-site-home .personal-tool-card,
+  .personal-site-home .personal-note-card,
+  .personal-site-home .personal-about-section,
+  .personal-site-home .personal-nav-menu,
+  .app-header,
+  .account-panel,
+  .platform-layout,
+  .question-bank-layout,
+  .practice-question-card {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: #f8fafc;
+  }
 }
 
 /* Keep the hero genuinely single-column on phones. This override intentionally

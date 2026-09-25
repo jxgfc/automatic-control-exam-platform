@@ -24,6 +24,7 @@
   const status = $("#status");
   const next = new URLSearchParams(window.location.search).get("next") || "/";
   let mode = "login";
+  let busy = false;
 
 
   function render() {
@@ -33,14 +34,25 @@
     toggle.textContent = register ? "已有账号？返回登录" : "没有账号？使用激活码注册";
     activationWrap.classList.toggle("is-visible", register);
     activation.required = register;
+    $("#password").autocomplete = register ? "new-password" : "current-password";
+    toggle.disabled = busy;
+    submit.disabled = busy;
   }
   function setError(message) { error.textContent = message || ""; error.hidden = !message; }
-  toggle.addEventListener("click", () => { mode = mode === "login" ? "register" : "login"; setError(""); render(); });
+  toggle.addEventListener("click", () => {
+    if (busy) return;
+    mode = mode === "login" ? "register" : "login";
+    setError("");
+    render();
+  });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (busy) return;
     setError("");
-    submit.disabled = true;
+    busy = true;
+    render();
     status.textContent = mode === "register" ? "正在核验激活码…" : "正在登录…";
+    let redirected = false;
     try {
       const response = await fetch("/api/auth/" + mode, {
         method: "POST",
@@ -50,11 +62,17 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "账号操作失败");
+      redirected = true;
       window.location.replace(safeNextPath(next));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "账号服务暂时不可用");
       status.textContent = "";
-    } finally { submit.disabled = false; }
+    } finally {
+      if (!redirected) {
+        busy = false;
+        render();
+      }
+    }
   });
   render();
 })();

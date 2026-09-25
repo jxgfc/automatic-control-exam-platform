@@ -15,6 +15,26 @@ function list(value, limit, itemLimit) {
   return [...new Set(values.map((item) => text(item, itemLimit)).filter(Boolean))].slice(0, limit);
 }
 
+// Calculator metadata is model supplied data. Keep it bounded and JSON-safe
+// before it reaches PostgreSQL so an accidental prompt payload cannot create
+// an unbounded record or prototype-bearing object.
+function jsonData(value, depth) {
+  const level = depth || 0;
+  if (level > 3 || value == null) return null;
+  if (typeof value === "string") return value.slice(0, 800);
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+  if (Array.isArray(value)) return value.slice(0, 40).map((item) => jsonData(item, level + 1)).filter((item) => item !== null);
+  if (typeof value !== "object") return null;
+  const result = {};
+  Object.keys(value).sort().slice(0, 30).forEach((key) => {
+    if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(key)) return;
+    const item = jsonData(value[key], level + 1);
+    if (item !== null) result[key] = item;
+  });
+  return Object.keys(result).length ? result : null;
+}
+
 function normalizeQuestion(input) {
   const item = input && typeof input === "object" ? input : {};
   const options = Array.isArray(item.options)
@@ -30,7 +50,8 @@ function normalizeQuestion(input) {
     chapter: text(item.chapter, 100) || "综合",
     schools: list(item.schools || item.school, 8, 40),
     keywords: list(item.keywords, 20, 80),
-    source: text(item.source, 200) || "AI原创生成"
+    source: text(item.source, 200) || "AI原创生成",
+    calculator: jsonData(item.calculator || item.calculatorSpec || item.toolSpec)
   };
 }
 
@@ -41,7 +62,8 @@ function fingerprint(input) {
     options: item.options,
     answer: item.answer,
     type: item.type,
-    chapter: item.chapter
+    chapter: item.chapter,
+    calculator: item.calculator
   })).digest("hex");
 }
 
@@ -59,6 +81,7 @@ function publicQuestion(row) {
     schools: Array.isArray(row.schools) ? row.schools : [],
     keywords: Array.isArray(row.keywords) ? row.keywords : [],
     source: row.source,
+    calculator: row.calculator || null,
     createdAt: row.createdAt || row.created_at || null,
     updatedAt: row.updatedAt || row.updated_at || null,
     fingerprint: row.fingerprint
@@ -127,6 +150,7 @@ function createPostgresRepository(databaseUrl) {
     max: 5,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
+    query_timeout: 8000,
     ssl: process.env.NODE_ENV === "production" && process.env.PGSSLMODE !== "disable" ? { rejectUnauthorized: false } : undefined
   });
   // Recover from idle connection errors through the next query/health probe.
@@ -147,6 +171,7 @@ function createPostgresRepository(databaseUrl) {
           schools TEXT[] NOT NULL DEFAULT '{}',
           keywords TEXT[] NOT NULL DEFAULT '{}',
           source VARCHAR(200) NOT NULL,
+          calculator JSONB,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           fingerprint CHAR(64) NOT NULL UNIQUE
@@ -154,6 +179,7 @@ function createPostgresRepository(databaseUrl) {
         CREATE INDEX IF NOT EXISTS ai_question_bank_chapter_idx ON ai_question_bank(chapter);
         CREATE INDEX IF NOT EXISTS ai_question_bank_type_idx ON ai_question_bank(type);
         CREATE INDEX IF NOT EXISTS ai_question_bank_difficulty_idx ON ai_question_bank(difficulty);
+        ALTER TABLE ai_question_bank ADD COLUMN IF NOT EXISTS calculator JSONB;
       `);
     },
     async checkHealth() {
@@ -170,23 +196,27 @@ function createPostgresRepository(databaseUrl) {
       if (f.difficulty && f.difficulty !== "all") add("difficulty = ?", f.difficulty);
       if (f.school && f.school !== "all") add("? = ANY(schools)", f.school);
       const search = text(f.search, 200);
-      if (search) { params.push("%" + search + "%"); where.push("(question ILIKE $" + params.length + " OR answer ILIKE $" + params.length + " OR analysis ILIKE $" + params.length + " OR chapter ILIKE $" + params.length + " OR $" + params.length + " = ANY(keywords))"); }
+      if (search) {
+        const escapedSearch = search.replace(/[\\%_]/g, "\\$&");
+        params.push("%" + escapedSearch + "%");
+        where.push("(question ILIKE $" + params.length + " ESCAPE '\\' OR answer ILIKE $" + params.length + " ESCAPE '\\' OR analysis ILIKE $" + params.length + " ESCAPE '\\' OR chapter ILIKE $" + params.length + " ESCAPE '\\' OR EXISTS (SELECT 1 FROM unnest(keywords) AS keyword WHERE keyword ILIKE $" + params.length + " ESCAPE '\\'))");
+      }
       const condition = where.length ? "WHERE " + where.join(" AND ") : "";
       const count = await pool.query("SELECT COUNT(*)::int AS total FROM ai_question_bank " + condition, params);
       const limit = Math.max(1, Math.min(100, Number(f.limit) || 50));
       const offset = Math.max(0, Number(f.offset) || 0);
-      const result = await pool.query("SELECT id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, created_at AS \"createdAt\", updated_at AS \"updatedAt\", fingerprint FROM ai_question_bank " + condition + " ORDER BY created_at DESC, id DESC LIMIT $" + (params.length + 1) + " OFFSET $" + (params.length + 2), [...params, limit, offset]);
+      const result = await pool.query("SELECT id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, calculator, created_at AS \"createdAt\", updated_at AS \"updatedAt\", fingerprint FROM ai_question_bank " + condition + " ORDER BY created_at DESC, id DESC LIMIT $" + (params.length + 1) + " OFFSET $" + (params.length + 2), [...params, limit, offset]);
       return { items: result.rows.map(publicQuestion), total: count.rows[0].total, limit, offset };
     },
     async insert(input) {
       const item = normalizeQuestion(input);
       if (!item.question || !item.answer || !item.analysis) throw new Error("题目、答案和解析不能为空");
       const fp = fingerprint(item);
-      const columns = "id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, created_at AS \"createdAt\", updated_at AS \"updatedAt\", fingerprint";
+      const columns = "id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, calculator, created_at AS \"createdAt\", updated_at AS \"updatedAt\", fingerprint";
       const existing = await pool.query("SELECT " + columns + " FROM ai_question_bank WHERE fingerprint = $1 LIMIT 1", [fp]);
       if (existing.rows[0]) return { row: publicQuestion(existing.rows[0]), created: false };
       try {
-        const result = await pool.query("INSERT INTO ai_question_bank (question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, fingerprint) VALUES ($1,$2::jsonb,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING " + columns, [item.question, JSON.stringify(item.options), item.answer, item.analysis, item.type, item.difficulty, item.chapter, item.schools, item.keywords, item.source, fp]);
+        const result = await pool.query("INSERT INTO ai_question_bank (question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, calculator, fingerprint) VALUES ($1,$2::jsonb,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) RETURNING " + columns, [item.question, JSON.stringify(item.options), item.answer, item.analysis, item.type, item.difficulty, item.chapter, item.schools, item.keywords, item.source, item.calculator == null ? null : JSON.stringify(item.calculator), fp]);
         return { row: publicQuestion(result.rows[0]), created: true };
       } catch (error) {
         if (error && error.code === "23505") {
@@ -201,8 +231,8 @@ function createPostgresRepository(databaseUrl) {
       if (!itemResult.rows[0]) return null;
       const item = normalizeQuestion({ ...itemResult.rows[0], ...input });
       const fp = fingerprint(item);
-      const result = await pool.query(`UPDATE ai_question_bank SET question=$1, options=$2::jsonb, answer=$3, analysis=$4, type=$5, difficulty=$6, chapter=$7, schools=$8, keywords=$9, source=$10, fingerprint=$11, updated_at=NOW() WHERE id=$12
-        RETURNING id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, created_at AS "createdAt", updated_at AS "updatedAt", fingerprint`, [item.question, JSON.stringify(item.options), item.answer, item.analysis, item.type, item.difficulty, item.chapter, item.schools, item.keywords, item.source, fp, id]);
+      const result = await pool.query(`UPDATE ai_question_bank SET question=$1, options=$2::jsonb, answer=$3, analysis=$4, type=$5, difficulty=$6, chapter=$7, schools=$8, keywords=$9, source=$10, calculator=$11::jsonb, fingerprint=$12, updated_at=NOW() WHERE id=$13
+        RETURNING id, question, options, answer, analysis, type, difficulty, chapter, schools, keywords, source, calculator, created_at AS "createdAt", updated_at AS "updatedAt", fingerprint`, [item.question, JSON.stringify(item.options), item.answer, item.analysis, item.type, item.difficulty, item.chapter, item.schools, item.keywords, item.source, item.calculator == null ? null : JSON.stringify(item.calculator), fp, id]);
       return publicQuestion(result.rows[0]);
     },
     async close() { await pool.end(); }
@@ -217,9 +247,27 @@ function createQuestionBankService(options) {
   else if (settings.useMemory === true || (settings.useMemory !== false && process.env.NODE_ENV !== "production")) repository = createMemoryRepository();
   else repository = null;
   let initializationError = null;
-  const ready = repository ? Promise.resolve(repository.initialize()).then(() => true).catch((error) => { initializationError = error; return false; }) : Promise.resolve(false);
-  async function ensureReady() {
+  let initializationAttemptAt = 0;
+  let initializationInFlight = null;
+  let ready = Promise.resolve(false);
+  const initialize = () => {
+    if (!repository) return Promise.resolve(false);
+    if (initializationInFlight) return initializationInFlight;
+    initializationAttemptAt = Date.now();
+    initializationInFlight = Promise.resolve(repository.initialize())
+      .then(() => { initializationError = null; return true; })
+      .catch((error) => { initializationError = error; return false; })
+      .finally(() => { initializationInFlight = null; });
+    ready = initializationInFlight;
+    return initializationInFlight;
+  };
+  if (repository) initialize();
+  const retryInitialization = async () => {
     await ready;
+    if (initializationError && Date.now() - initializationAttemptAt >= 30000) await initialize();
+  };
+  async function ensureReady() {
+    await retryInitialization();
     if (!repository) { const error = new Error("题库数据库未配置"); error.status = 503; error.code = "QUESTION_BANK_NOT_CONFIGURED"; throw error; }
     if (initializationError) { const error = new Error("题库数据库暂时不可用"); error.status = 503; error.code = "QUESTION_BANK_UNAVAILABLE"; throw error; }
   }
@@ -228,7 +276,7 @@ function createQuestionBankService(options) {
     configured: Boolean(repository),
     ready,
     checkHealth: async () => {
-      await ready;
+      await retryInitialization();
       if (!repository || initializationError || typeof repository.checkHealth !== "function") return false;
       try { return Boolean(await repository.checkHealth()); } catch (_) { return false; }
     },

@@ -25,8 +25,13 @@ creates the account, session, and question-bank tables on startup.
 * `POST /api/question-bank` requires `Authorization: Bearer <QUESTION_BANK_ADMIN_TOKEN>`
   or `X-Question-Bank-Admin-Token`.
 * `PATCH /api/question-bank/:id` uses the same token check.
-* Successful `POST /api/ai/questions` writes generated questions to PostgreSQL on a
-  best-effort basis and still returns the result if the database is temporarily down.
+* Successful `POST /api/ai/questions` returns the generated questions together with a
+  `persistence` object. Its `status` is `saved`, `partial`, `failed`, or
+  `unavailable`, so the browser can distinguish cloud persistence from local history.
+  Calculator metadata is stored in the `calculator` JSONB field and is returned by
+  `GET /api/question-bank` for one-click calculator handoff. Writes are bounded and
+  do not block the response indefinitely; a failed cloud write does not discard the
+  generated result.
 
 ## Accounts
 

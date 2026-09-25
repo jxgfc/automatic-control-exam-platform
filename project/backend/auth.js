@@ -491,15 +491,32 @@ function createAuthService(options) {
   }
 
   let initializationError = null;
-  const ready = store
-    ? Promise.resolve(store.initialize()).then(() => true).catch((error) => {
-      initializationError = error;
-      return false;
-    })
-    : Promise.resolve(false);
+  let initializationAttemptAt = 0;
+  let initializationInFlight = null;
+  let ready = Promise.resolve(false);
+  const initialize = () => {
+    if (!store) return Promise.resolve(false);
+    if (initializationInFlight) return initializationInFlight;
+    initializationAttemptAt = Date.now();
+    initializationInFlight = Promise.resolve(store.initialize())
+      .then(() => { initializationError = null; return true; })
+      .catch((error) => { initializationError = error; return false; })
+      .finally(() => { initializationInFlight = null; });
+    ready = initializationInFlight;
+    return initializationInFlight;
+  };
+  if (store) initialize();
+
+  async function retryInitialization() {
+    await ready;
+    // A Render database can be asleep or restarting during deployment. Retry
+    // idempotent schema initialization at a bounded interval instead of
+    // permanently marking the service unavailable after the first failure.
+    if (initializationError && Date.now() - initializationAttemptAt >= 30000) await initialize();
+  }
 
   async function ensureReady() {
-    await ready;
+    await retryInitialization();
     if (!store) throw new AuthError("账号服务未配置，请先配置 DATABASE_URL。", 503, "AUTH_NOT_CONFIGURED");
     if (initializationError) throw new AuthError("账号服务暂时不可用，请稍后重试。", 503, "AUTH_UNAVAILABLE");
   }
@@ -618,7 +635,7 @@ function createAuthService(options) {
 
   async function checkHealth() {
     if (!store) return false;
-    await ready;
+    await retryInitialization();
     if (initializationError || typeof store.checkHealth !== "function") return false;
     try {
       return Boolean(await store.checkHealth());

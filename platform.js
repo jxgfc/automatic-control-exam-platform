@@ -43,6 +43,22 @@
   let currentProfile = "all";
   let currentTool = "overview";
 
+  // Keep the active workbench in the URL so a refresh, bookmark, or shared
+  // link returns to the same place. Query state avoids hijacking the landing
+  // page's hash-based sections (for example #site-notes).
+  function syncToolUrl(toolId) {
+    if (window.location.protocol === "file:" || !window.history || !window.history.replaceState) return;
+    const url = new URL(window.location.href);
+    if (toolId && toolId !== "overview") url.searchParams.set("tool", toolId);
+    else url.searchParams.delete("tool");
+    window.history.replaceState(null, "", url.pathname + (url.search ? url.search : "") + url.hash);
+  }
+
+  function toolFromUrl() {
+    const value = new URLSearchParams(window.location.search).get("tool");
+    return value && /^[a-z0-9-]+$/i.test(value) && document.getElementById("tool-" + value) ? value : "";
+  }
+
   function formatNumber(value, digits) {
     if (value === Infinity) {
       return "∞";
@@ -87,6 +103,7 @@
       toolId = "overview";
     }
     currentTool = toolId;
+    syncToolUrl(toolId);
     document.querySelectorAll(".tool-view").forEach((view) => {
       const active = view.id === "tool-" + toolId;
       view.hidden = !active;
@@ -423,4 +440,15 @@
   calculateSteadyError();
   calculateSecondOrder();
   calculateFrequency();
+
+  // Advanced modules are inserted by later scripts, so restore after the
+  // document has loaded rather than racing their initialization.
+  window.addEventListener("load", () => {
+    const savedTool = toolFromUrl();
+    if (savedTool) {
+      showTool(savedTool);
+      const platform = document.querySelector("#learning-platform");
+      if (platform) platform.scrollIntoView({ behavior: "auto", block: "start" });
+    }
+  }, { once: true });
 })();

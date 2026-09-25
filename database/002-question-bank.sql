@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS ai_question_bank (
   schools TEXT[] NOT NULL DEFAULT '{}',
   keywords TEXT[] NOT NULL DEFAULT '{}',
   source VARCHAR(200) NOT NULL,
+  calculator JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   fingerprint CHAR(64) NOT NULL UNIQUE
@@ -19,3 +20,6 @@ CREATE TABLE IF NOT EXISTS ai_question_bank (
 CREATE INDEX IF NOT EXISTS ai_question_bank_chapter_idx ON ai_question_bank(chapter);
 CREATE INDEX IF NOT EXISTS ai_question_bank_type_idx ON ai_question_bank(type);
 CREATE INDEX IF NOT EXISTS ai_question_bank_difficulty_idx ON ai_question_bank(difficulty);
+
+-- Keep upgrades idempotent for databases created before calculator metadata was added.
+ALTER TABLE ai_question_bank ADD COLUMN IF NOT EXISTS calculator JSONB;

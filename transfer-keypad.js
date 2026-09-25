@@ -6,7 +6,8 @@
   // selection so it works on touch screens as well as with a mouse.
   const state = {
     input: null,
-    panel: null
+    panel: null,
+    trigger: null
   };
 
   function escapeHtml(value) {
@@ -42,11 +43,15 @@
 
   function hide() {
     if (state.panel) state.panel.hidden = true;
+    if (state.trigger) state.trigger.setAttribute("aria-expanded", "false");
+    state.trigger = null;
   }
 
   function show(input, anchor) {
     if (!state.panel) return;
+    if (state.trigger && state.trigger !== anchor) state.trigger.setAttribute("aria-expanded", "false");
     state.input = input;
+    state.trigger = anchor;
     // Opening the keypad from its trigger should append at the end when the
     // field was not already focused; an already focused field keeps its caret
     // or selection so the keypad remains a true cursor editor.
@@ -71,12 +76,16 @@
     state.panel.style.left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.left)) + "px";
     state.panel.style.top = Math.min(window.innerHeight - 300, rect.bottom + 8) + "px";
     state.panel.hidden = false;
+    anchor.setAttribute("aria-expanded", "true");
   }
 
   function ensurePanel() {
     if (state.panel) return;
     const panel = document.createElement("div");
     panel.className = "transfer-keypad-popover";
+    panel.id = "transfer-keypad-popover";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-label", "公式键盘");
     panel.hidden = true;
     panel.addEventListener("mousedown", (event) => event.preventDefault());
     panel.addEventListener("click", (event) => {
@@ -94,6 +103,13 @@
         insertAtCursor(state.input, variableFor(state.input));
       } else if (button.dataset.tkpValue) {
         insertAtCursor(state.input, button.dataset.tkpValue);
+      }
+    });
+    panel.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        hide();
+        if (state.input) state.input.focus({ preventScroll: true });
       }
     });
     document.body.appendChild(panel);
@@ -116,6 +132,8 @@
       button.textContent = "⌨";
       button.title = "打开公式键盘";
       button.setAttribute("aria-label", "打开公式键盘");
+      button.setAttribute("aria-controls", "transfer-keypad-popover");
+      button.setAttribute("aria-expanded", "false");
       button.addEventListener("mousedown", (event) => event.preventDefault());
       button.addEventListener("click", () => show(input, button));
       input.insertAdjacentElement("afterend", button);
@@ -133,6 +151,13 @@
     }
     document.addEventListener("click", (event) => {
       if (state.panel && !state.panel.hidden && !state.panel.contains(event.target) && !event.target.closest(".transfer-keypad-trigger")) hide();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !state.panel || state.panel.hidden) return;
+      event.preventDefault();
+      const input = state.input;
+      hide();
+      if (input) input.focus({ preventScroll: true });
     });
     window.addEventListener("resize", hide);
     // Keep the keypad open while the trigger is being scrolled into view. A

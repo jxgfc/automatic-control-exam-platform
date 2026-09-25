@@ -12,6 +12,66 @@
     if (element && value != null) element.textContent = value;
   };
 
+  const backupKeys = [
+    "control-ai-question-history-v1",
+    "control-question-favorites-v1",
+    "control-question-wrong-v1",
+    "control-question-wrong-book-v2",
+    "control-question-attempts-v2",
+    "control-ai-settings-v1",
+    "control-knowledge-progress-v1"
+  ];
+
+  function backupStatus(message, isError) {
+    const status = $("[data-backup-status]");
+    if (!status) return;
+    status.textContent = message || "";
+    status.classList.toggle("is-error", Boolean(isError));
+  }
+
+  function exportLearningData() {
+    const values = {};
+    backupKeys.forEach((key) => {
+      const value = localStorage.getItem(key);
+      if (value !== null) values[key] = value;
+    });
+    const payload = {
+      schema: "control-study-backup-v1",
+      exportedAt: new Date().toISOString(),
+      keys: values
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "automatic-control-study-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    backupStatus("备份已下载（" + Object.keys(values).length + " 类记录）");
+  }
+
+  async function importLearningData(file) {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) throw new Error("备份文件不能超过3MB");
+    let payload;
+    try { payload = JSON.parse(await file.text()); } catch (_) { throw new Error("备份文件不是有效JSON"); }
+    if (!payload || payload.schema !== "control-study-backup-v1" || !payload.keys || typeof payload.keys !== "object" || Array.isArray(payload.keys)) {
+      throw new Error("备份版本不兼容");
+    }
+    const entries = Object.entries(payload.keys).filter(([key, value]) => backupKeys.includes(key) && typeof value === "string");
+    if (!entries.length) throw new Error("备份中没有可恢复的学习记录");
+    const invalid = entries.find(([, value]) => {
+      try { JSON.parse(value); return false; } catch (_) { return true; }
+    });
+    if (invalid) throw new Error("备份中的学习数据格式不完整");
+    if (!window.confirm("导入备份会覆盖当前浏览器中的同名学习记录，是否继续？")) return;
+    entries.forEach(([key, value]) => localStorage.setItem(key, value));
+    backupStatus("已恢复 " + entries.length + " 类记录，正在刷新…");
+    setTimeout(() => window.location.reload(), 260);
+  }
+
   text("[data-profile-name]", profile.name || "自动控制学习空间");
   text("[data-profile-short-name]", profile.shortName || profile.name || "控制学习空间");
   text("[data-profile-eyebrow]", profile.eyebrow || "PERSONAL LAB");
@@ -96,7 +156,7 @@
     });
     $$("a", menu).forEach((link) => link.addEventListener("click", () => {
       header.classList.remove("is-menu-open");
-      if (menu) menu.hidden = false;
+      if (menu) menu.hidden = window.matchMedia("(max-width: 640px)").matches;
       if (toggle) toggle.setAttribute("aria-expanded", "false");
     }));
     window.addEventListener("resize", syncMenu);
@@ -107,4 +167,17 @@
   };
   updateNav();
   window.addEventListener("scroll", updateNav, { passive: true });
+
+  const exportButton = $("[data-backup-export]");
+  const importButton = $("[data-backup-import]");
+  const importFile = $("[data-backup-file]");
+  exportButton && exportButton.addEventListener("click", () => {
+    try { exportLearningData(); } catch (_) { backupStatus("备份导出失败，请检查浏览器存储权限", true); }
+  });
+  importButton && importButton.addEventListener("click", () => importFile && importFile.click());
+  importFile && importFile.addEventListener("change", async () => {
+    try { await importLearningData(importFile.files && importFile.files[0]); }
+    catch (error) { backupStatus(error instanceof Error ? error.message : "备份导入失败", true); }
+    finally { importFile.value = ""; }
+  });
 })();

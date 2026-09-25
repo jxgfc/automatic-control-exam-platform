@@ -106,9 +106,26 @@ function sendJson(response, status, value) {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "X-Frame-Options": "DENY",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
   });
   response.end(body);
+}
+
+function securityHeaders(request) {
+  const forwardedProtocol = String(request && request.headers && request.headers["x-forwarded-proto"] || "").split(",")[0].trim().toLowerCase();
+  const secure = Boolean(request && request.socket && request.socket.encrypted) || forwardedProtocol === "https";
+  return {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Frame-Options": "DENY",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    // Keep the product's static resources same-origin while allowing the browser
+    // to render locally-generated charts and KaTeX fonts/data URLs.
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    ...(secure ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" } : {})
+  };
 }
 
 function createRateLimiter(options) {
@@ -652,10 +669,7 @@ function serveStatic(request, response, pathname) {
     response.writeHead(200, {
       "Content-Type": MIME_TYPES[path.extname(filePath).toLowerCase()] || "application/octet-stream",
       "Content-Length": stats.size,
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "strict-origin-when-cross-origin",
-      "X-Frame-Options": "DENY",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      ...securityHeaders(request),
       "Cache-Control": "no-cache"
     });
     if (request.method === "HEAD") { response.end(); return; }
@@ -698,14 +712,28 @@ function createAppServer(options) {
     return false;
   };
   const saveGeneratedQuestions = async (questions, criteria) => {
-    if (!questionBank || !questionBank.configured || !questions.length) return;
+    const items = Array.isArray(questions) ? questions.slice(0, 5) : [];
+    if (!items.length) return { status: "skipped", saved: 0, total: 0 };
+    if (!questionBank || !questionBank.configured) {
+      return { status: "unavailable", saved: 0, total: items.length, reason: "题库数据库未配置" };
+    }
     const schoolText = String(criteria && (criteria.school || criteria.schools) || "");
     const schools = ["828", "861"].filter((school) => schoolText.includes(school));
-    try {
-      await Promise.all(questions.map((question) => questionBank.insert({ ...question, schools })));
-    } catch (_) {
-      // Cloud persistence is best-effort; the browser history remains the source of truth offline.
-    }
+    const results = await Promise.all(items.map(async (question) => {
+      try {
+        await questionBank.insert({ ...question, schools });
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }));
+    const saved = results.filter(Boolean).length;
+    return {
+      status: saved === items.length ? "saved" : saved ? "partial" : "failed",
+      saved,
+      total: items.length,
+      ...(saved < items.length ? { failed: items.length - saved } : {})
+    };
   };
   return http.createServer(async (request, response) => {
     let url;
@@ -751,10 +779,10 @@ function createAppServer(options) {
         }
         const body = await readJson(request);
         const questions = await requestAiQuestions(body, settings.fetch);
-        void saveGeneratedQuestions(questions, body.criteria);
-        sendJson(response, 200, { questions });
+        const persistence = await saveGeneratedQuestions(questions, body.criteria);
+        sendJson(response, 200, { questions, persistence });
       } catch (error) {
-        sendJson(response, 400, { error: error instanceof Error ? error.message : "AI出题失败" });
+        sendJson(response, Number(error && error.status) || 400, { error: error instanceof Error ? error.message : "AI出题失败", code: error && error.code });
       }
       return;
     }
@@ -952,7 +980,7 @@ function createAppServer(options) {
         const models = await requestAiModels(body, settings.fetch);
         sendJson(response, 200, { models });
       } catch (error) {
-        sendJson(response, 400, { error: error instanceof Error ? error.message : "读取模型列表失败" });
+        sendJson(response, Number(error && error.status) || 400, { error: error instanceof Error ? error.message : "读取模型列表失败", code: error && error.code });
       }
       return;
     }
@@ -972,6 +1000,13 @@ function createAppServer(options) {
     if (requireActivation && url.pathname === "/index.html") {
       try {
         if (!(await currentUser(request))) {
+          const query = url.searchParams.toString();
+          if (query) {
+            const next = url.pathname + "?" + query;
+            response.writeHead(302, { Location: "/login.html?next=" + encodeURIComponent(next), "Cache-Control": "no-store" });
+            response.end();
+            return;
+          }
           serveStatic(request, response, "/login.html");
           return;
         }

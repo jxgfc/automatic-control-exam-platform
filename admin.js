@@ -109,9 +109,12 @@
         textarea.style.position = "fixed";
         textarea.style.opacity = "0";
         document.body.appendChild(textarea);
-        textarea.select();
-        if (!document.execCommand("copy")) throw new Error("copy failed");
-        textarea.remove();
+        try {
+          textarea.select();
+          if (!document.execCommand("copy")) throw new Error("copy failed");
+        } finally {
+          textarea.remove();
+        }
       }
       $("#copy-status").textContent = "已复制";
     } catch (_) {
@@ -147,7 +150,17 @@
       setMessage(error instanceof Error ? error.message : "用户会话撤销失败");
     }
   });
-  $("#logout").addEventListener("click", async () => { try { await request("/api/auth/logout", { method: "POST" }); } finally { window.location.replace("/login.html"); } });
+  $("#logout").addEventListener("click", async () => {
+    const button = $("#logout");
+    button.disabled = true;
+    try {
+      await request("/api/auth/logout", { method: "POST" });
+      window.location.replace("/login.html?next=/admin.html");
+    } catch (error) {
+      button.disabled = false;
+      setMessage(error instanceof Error ? error.message : "退出登录失败，请稍后重试");
+    }
+  });
   (async () => {
     try {
       const session = await request("/api/auth/me");

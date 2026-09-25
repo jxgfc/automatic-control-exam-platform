@@ -89,4 +89,4 @@ window.ControlSiteProfile = {
 };
 ```
 
-首页使用现有计算器截图作为 Banner 中的产品预览，并提供根轨迹、知识树、题库、频域分析四个入口。所有学习数据仍保存在浏览器本地；部署到公网时，建议在 Caddy 或 Cloudflare Access 后增加登录保护。
+首页使用现有计算器截图作为 Banner 中的产品预览，并提供根轨迹、知识树、题库、频域分析四个入口。账号、会话、激活码和 AI 生成题由 PostgreSQL 保存；错题、掌握度、知识树进度和 AI 历史题仍按用户浏览器保存。首页“学习记录”区域支持导出和导入 JSON 备份，适合迁移个人学习数据。公网部署时，建议启用 `REQUIRE_ACTIVATION=true`，并在 Caddy 或 Cloudflare Access 后增加额外登录保护。

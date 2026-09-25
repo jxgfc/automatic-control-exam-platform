@@ -54,7 +54,7 @@ git status
 | 构建命令 | `npm ci --omit=dev` |
 | 启动命令 | `npm start` |
 | 健康检查路径 | `/api/health` |
-| 环境变量 | `NODE_ENV=production` |
+| 环境变量 | `NODE_ENV=production`、`DATABASE_URL`、`QUESTION_BANK_ADMIN_TOKEN`、`ACTIVATION_ADMIN_TOKEN`、`ADMIN_USERNAME`、`REQUIRE_ACTIVATION=true` |
 
 也可以在 Render 控制台手动创建 Web Service，并填写相同配置。不要把端口固定为 `4173` 或 `10000`：Render 会通过 `PORT` 环境变量注入端口，服务已经监听 `0.0.0.0` 并读取该变量。
 
@@ -83,7 +83,7 @@ Invoke-WebRequest https://<service-url>/styles.css -UseBasicParsing
 - `/styles.css` 返回 HTTP 200。
 - 浏览器可以直接打开 Render 公共 URL，页面功能不再依赖 `127.0.0.1` 或同一 Wi-Fi。
 
-AI 题库的真实生成仍需要用户在页面中填写可用的上游 API 地址、模型和令牌。不要把个人令牌设置为 Render 服务环境变量，也不要将其写入 `render.yaml`。
+AI 题库的真实生成仍需要用户在页面中填写可用的上游 API 地址、模型和令牌。不要把个人令牌设置为 Render 服务环境变量，也不要将其写入 `render.yaml`。登录后生成的题目会在本次请求中写入 PostgreSQL 并返回同步结果；数据库不可用时页面仍会保留本地 AI 历史并明确提示云端同步状态。
 
 ## 故障排查
 

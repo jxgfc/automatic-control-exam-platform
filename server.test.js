@@ -74,7 +74,7 @@ const { buildPrompt, parseGeneratedQuestions, requestAiQuestions, requestAiModel
     capturedHeaders = options.headers;
     return new Response(JSON.stringify({
       choices: [{ message: { content: JSON.stringify({ questions: [
-        { chapter: "离散系统", type: "计算", difficulty: "中等", question: "判断z^2-0.5z是否稳定", answer: "稳定", analysis: "根为0与0.5", keywords: ["单位圆"] }
+        { chapter: "离散系统", type: "计算", difficulty: "中等", question: "判断z^2-0.5z是否稳定", answer: "稳定", analysis: "根为0与0.5", keywords: ["单位圆"], calculator: { tool: "discrete", inputs: { polynomial: "z^2-0.5z" } } }
       ] }) } }]
     }), { status: 200, headers: { "Content-Type": "application/json" } });
   };
@@ -262,6 +262,19 @@ const { buildPrompt, parseGeneratedQuestions, requestAiQuestions, requestAiModel
   assert.deepEqual(health, { ok: true, aiProxy: true, version: "activation-codes-v1", auth: true, questionBank: true, authReady: true, questionBankReady: true, databaseReady: true, adminConfigured: false, requireActivation: false });
   const page = await fetch(`http://127.0.0.1:${address.port}/`).then((response) => response.text());
   assert.match(page, /自动控制原理考研计算平台/);
+  const generatedResponse = await fetch(`http://127.0.0.1:${address.port}/api/ai/questions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ protocol: "chat", baseUrl: "http://127.0.0.1:11434/v1", model: "local-test", criteria: { count: 1 } })
+  });
+  assert.equal(generatedResponse.status, 200);
+  const generatedPayload = await generatedResponse.json();
+  assert.equal(generatedPayload.persistence.status, "saved");
+  assert.equal(generatedPayload.persistence.saved, 1);
+  assert.equal(generatedPayload.persistence.total, 1);
+  const persistedQuestions = await fetch(`http://127.0.0.1:${address.port}/api/question-bank?search=单位圆`).then((response) => response.json());
+  assert.equal(persistedQuestions.total, 1);
+  assert.equal(persistedQuestions.items[0].calculator.tool, "discrete");
   const privateSource = await fetch(`http://127.0.0.1:${address.port}/server.js`);
   assert.equal(privateSource.status, 404);
   const traversal = await fetch(`http://127.0.0.1:${address.port}/%2e%2e/server.js`);
