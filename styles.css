@@ -5310,6 +5310,21 @@ body:has(.personal-site-home) {
   overflow-wrap: anywhere;
 }
 
+/* A chart lives inside a narrow reading pane on large screens.  Let it fit
+   that pane at its default scale, then let the existing wheel zoom create a
+   deliberate scrollable canvas when the learner enlarges it.  Keeping the
+   minimum width at 520px made every chart show a horizontal scrollbar before
+   the learner had interacted with it. */
+.question-plot-viewport {
+  width: 100%;
+  overscroll-behavior: contain;
+}
+
+.question-plot-svg {
+  min-width: min(520px, 100%);
+  max-width: none;
+}
+
 @media (min-width: 1041px) {
   /* Give the actual question more room than its filter form. This prevents
      formulas and Chinese prose from becoming a narrow newspaper column on
