@@ -54,6 +54,7 @@ git status
 | 构建命令 | `npm ci --omit=dev` |
 | 启动命令 | `npm start` |
 | 健康检查路径 | `/api/health` |
+| 自动部署 | `main` 分支推送后自动部署 |
 | 环境变量 | `NODE_ENV=production`、`DATABASE_URL`、`QUESTION_BANK_ADMIN_TOKEN`、`ACTIVATION_ADMIN_TOKEN`、`ADMIN_USERNAME`、`REQUIRE_ACTIVATION=true` |
 
 也可以在 Render 控制台手动创建 Web Service，并填写相同配置。不要把端口固定为 `4173` 或 `10000`：Render 会通过 `PORT` 环境变量注入端口，服务已经监听 `0.0.0.0` 并读取该变量。

@@ -3,6 +3,7 @@ services:
     name: automatic-control-exam-platform
     runtime: node
     plan: free
+    autoDeploy: true
     buildCommand: npm ci --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health
