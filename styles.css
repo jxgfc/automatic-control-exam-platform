@@ -5316,6 +5316,18 @@ body:has(.personal-site-home) {
   overflow: visible;
 }
 
+/* On a genuinely wide reading surface, keep the complete question beside a
+   long solution while the document remains the only vertical scroller.  The
+   narrow container above stays a normal single-column flow for phones and
+   tablets. */
+@container (min-width: 901px) {
+  .question-stem-pane {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+  }
+}
+
 /* A chart lives inside a narrow reading pane on large screens.  Let it fit
    that pane at its default scale, then let the existing wheel zoom create a
    deliberate scrollable canvas when the learner enlarges it.  Keeping the
