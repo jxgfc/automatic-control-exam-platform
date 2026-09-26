@@ -170,6 +170,24 @@ let server;
   assert.ok(await page.locator(".question-plot-point").count() >= 1);
   await page.locator(".question-plot-point").first().click({ force: true });
   assert.notEqual(await page.locator("[data-question-plot-info]").innerText(), "将鼠标悬停或点击图中点查看具体信息");
+  const questionPlotViewport = page.locator(".question-plot-viewport");
+  const defaultQuestionPlot = await questionPlotViewport.evaluate((node) => ({
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+    svgWidth: node.querySelector(".question-plot-svg").getBoundingClientRect().width
+  }));
+  assert.ok(defaultQuestionPlot.scrollWidth <= defaultQuestionPlot.clientWidth + 1, "chart should fit before zoom");
+  await questionPlotViewport.dispatchEvent("wheel", { deltaY: -500 });
+  const zoomedQuestionPlot = await questionPlotViewport.evaluate((node) => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth,
+    svgWidth: node.querySelector(".question-plot-svg").getBoundingClientRect().width,
+    transform: getComputedStyle(node.querySelector(".question-plot-svg")).transform
+  }));
+  assert.equal(zoomedQuestionPlot.transform, "none", "question chart zoom should use a scrollable layout box");
+  assert.ok(zoomedQuestionPlot.svgWidth > defaultQuestionPlot.svgWidth, "question chart should enlarge on wheel zoom");
+  assert.ok(zoomedQuestionPlot.scrollWidth > zoomedQuestionPlot.clientWidth, "zoomed question chart should be pannable");
+  assert.match(await page.locator("[data-question-plot-info]").innerText(), /当前缩放/);
   assert.ok(await page.locator("[data-bank-open-tool]").count() >= 1);
   await page.locator("[data-bank-open-tool]").first().click();
   await page.waitForSelector("#tool-root-locus .question-context-banner");

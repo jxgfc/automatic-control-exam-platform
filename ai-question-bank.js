@@ -689,7 +689,7 @@
         const zeroMarks = Solver.complexPolynomialRoots(transfer.numerator).map((point) => '<g class="question-plot-point" data-point-info="零点 ' + escapeHtml(plotNumber(point.real) + (point.imaginary >= 0 ? "+" : "") + plotNumber(point.imaginary) + "j") + '"><title>零点</title><circle cx="' + mapX(point.real) + '" cy="' + mapY(point.imaginary) + '" r="5"/></g>').join("");
         const samples = points.map((point) => '<circle class="question-plot-point" data-point-info="K=' + escapeHtml(plotNumber(point.gain)) + '，s=' + escapeHtml(plotNumber(point.real) + (point.imaginary >= 0 ? "+" : "") + plotNumber(point.imaginary) + "j") + '" cx="' + mapX(point.real) + '" cy="' + mapY(point.imaginary) + '" r="2.8"><title>K=' + escapeHtml(plotNumber(point.gain)) + '</title></circle>').join("");
         const axisX = mapY(0), axisY = mapX(0);
-        return '<section class="question-visual" data-question-visual="root-locus"><div class="question-visual-heading"><strong>题目图形 · 根轨迹预览</strong><span>滚轮缩放 · 点击点查看坐标</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目根轨迹图"><line class="question-plot-axis" x1="20" y1="' + axisX + '" x2="600" y2="' + axisX + '"/><line class="question-plot-axis" x1="' + axisY + '" y1="15" x2="' + axisY + '" y2="165"/>' + branchLines + poleMarks + zeroMarks + samples + '</svg></div><div class="question-plot-info" data-question-plot-info>将鼠标悬停或点击图中点查看具体信息</div></section>';
+        return '<section class="question-visual" data-question-visual="root-locus"><div class="question-visual-heading"><strong>题目图形 · 根轨迹预览</strong><span>滚轮缩放 · 点击点查看坐标</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目根轨迹图"><line class="question-plot-axis" x1="20" y1="' + axisX + '" x2="600" y2="' + axisX + '"/><line class="question-plot-axis" x1="' + axisY + '" y1="15" x2="' + axisY + '" y2="165"/>' + branchLines + poleMarks + zeroMarks + samples + '</svg></div><div class="question-plot-info" data-question-plot-info aria-live="polite">将鼠标悬停或点击图中点查看具体信息</div></section>';
       }
       if (preset.tool === "nyquist" && Core) {
         const transfer = Solver.transferFunctionFromExpressions(preset.inputs.numerator || "1", preset.inputs.denominator || "1");
@@ -703,7 +703,7 @@
         const mapY = (value) => 150 - (value - minY) / Math.max(1, maxY - minY) * 130;
         const path = points.map((point, index) => (index ? "L" : "M") + mapX(point.real).toFixed(1) + " " + mapY(point.imaginary).toFixed(1)).join(" ");
         const samples = points.filter((_, index) => index % 12 === 0).map((point) => '<circle class="question-plot-point" data-point-info="ω=' + escapeHtml(plotNumber(point.frequency)) + '，Re=' + escapeHtml(plotNumber(point.real)) + '，Im=' + escapeHtml(plotNumber(point.imaginary)) + '" cx="' + mapX(point.real) + '" cy="' + mapY(point.imaginary) + '" r="3"><title>ω=' + escapeHtml(plotNumber(point.frequency)) + '</title></circle>').join("");
-        return '<section class="question-visual" data-question-visual="nyquist"><div class="question-visual-heading"><strong>题目图形 · Nyquist轨迹预览</strong><span>滚轮缩放 · 点击点查看复平面坐标</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目Nyquist轨迹"><line class="question-plot-axis" x1="20" y1="' + mapY(0) + '" x2="600" y2="' + mapY(0) + '"/><line class="question-plot-axis" x1="' + mapX(0) + '" y1="20" x2="' + mapX(0) + '" y2="160"/><circle cx="' + mapX(-1) + '" cy="' + mapY(0) + '" r="4" fill="#b3403b"/><path class="question-plot-line" d="' + path + '"/>' + samples + '</svg></div><div class="question-plot-info" data-question-plot-info>红点为 −1+j0 临界点；将鼠标悬停或点击图中点查看信息</div></section>';
+        return '<section class="question-visual" data-question-visual="nyquist"><div class="question-visual-heading"><strong>题目图形 · Nyquist轨迹预览</strong><span>滚轮缩放 · 点击点查看复平面坐标</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目Nyquist轨迹"><line class="question-plot-axis" x1="20" y1="' + mapY(0) + '" x2="600" y2="' + mapY(0) + '"/><line class="question-plot-axis" x1="' + mapX(0) + '" y1="20" x2="' + mapX(0) + '" y2="160"/><circle cx="' + mapX(-1) + '" cy="' + mapY(0) + '" r="4" fill="#b3403b"/><path class="question-plot-line" d="' + path + '"/>' + samples + '</svg></div><div class="question-plot-info" data-question-plot-info aria-live="polite">红点为 −1+j0 临界点；将鼠标悬停或点击图中点查看信息</div></section>';
       }
       if (preset.tool === "frequency" && Core) {
         const transfer = Solver.transferFunctionFromExpressions(preset.inputs.numerator || "1", preset.inputs.denominator || "1");
@@ -715,7 +715,7 @@
         const mapY = (db) => 145 - (db - minDb) / Math.max(1, maxDb - minDb) * 120;
         const path = points.map((point, index) => (index ? "L" : "M") + mapX(index).toFixed(1) + " " + mapY(point.magnitudeDb).toFixed(1)).join(" ");
         const samples = points.filter((_, index) => index % 10 === 0).map((point, index) => '<circle class="question-plot-point" data-point-info="ω=' + escapeHtml(plotNumber(point.frequency)) + '，幅值=' + escapeHtml(plotNumber(point.magnitudeDb)) + ' dB" cx="' + mapX(index * 10) + '" cy="' + mapY(point.magnitudeDb) + '" r="3"><title>ω=' + escapeHtml(plotNumber(point.frequency)) + '</title></circle>').join("");
-        return '<section class="question-visual" data-question-visual="frequency"><div class="question-visual-heading"><strong>题目图形 · Bode幅频预览</strong><span>滚轮缩放 · 点击点查看频率信息</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目Bode图"><line class="question-plot-axis" x1="20" y1="145" x2="600" y2="145"/><line class="question-plot-axis" x1="20" y1="20" x2="20" y2="160"/><path class="question-plot-line" d="' + path + '"/>' + samples + '</svg></div><div class="question-plot-info" data-question-plot-info>将鼠标悬停或点击图中点查看具体信息</div></section>';
+        return '<section class="question-visual" data-question-visual="frequency"><div class="question-visual-heading"><strong>题目图形 · Bode幅频预览</strong><span>滚轮缩放 · 点击点查看频率信息</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="题目Bode图"><line class="question-plot-axis" x1="20" y1="145" x2="600" y2="145"/><line class="question-plot-axis" x1="20" y1="20" x2="20" y2="160"/><path class="question-plot-line" d="' + path + '"/>' + samples + '</svg></div><div class="question-plot-info" data-question-plot-info aria-live="polite">将鼠标悬停或点击图中点查看具体信息</div></section>';
       }
       if (preset.tool === "second-order" && preset.inputs.zeta && preset.inputs.wn && Core) {
         const metrics = Core.secondOrderMetrics(preset.inputs.zeta, preset.inputs.wn);
@@ -725,7 +725,7 @@
         const mapY = (value) => 150 - (value - min) / Math.max(1, max - min) * 130;
         const path = values.map((value, index) => (index ? "L" : "M") + mapX(index).toFixed(1) + " " + mapY(value).toFixed(1)).join(" ");
         const peaks = values.map((value, index) => ({ value, index })).filter((point) => point.index && point.index < values.length - 1 && point.value >= values[point.index - 1] && point.value >= values[point.index + 1]).slice(0, 4).map((point) => '<circle class="question-plot-point" data-point-info="t=' + (point.index / 10).toFixed(1) + ' s，y=' + point.value.toFixed(4) + '" cx="' + mapX(point.index) + '" cy="' + mapY(point.value) + '" r="3"><title>峰值</title></circle>').join("");
-        return '<section class="question-visual" data-question-visual="step-response"><div class="question-visual-heading"><strong>题目图形 · 单位阶跃响应</strong><span>滚轮缩放 · 点击采样点查看信息</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="二阶系统阶跃响应图"><line class="question-plot-axis" x1="20" y1="150" x2="600" y2="150"/><line class="question-plot-axis" x1="20" y1="20" x2="20" y2="160"/><path class="question-plot-line" d="' + path + '"/>' + peaks + '</svg></div><div class="question-plot-info" data-question-plot-info>将鼠标悬停或点击图中点查看具体信息</div></section>';
+        return '<section class="question-visual" data-question-visual="step-response"><div class="question-visual-heading"><strong>题目图形 · 单位阶跃响应</strong><span>滚轮缩放 · 点击采样点查看信息</span></div><div class="question-plot-viewport"><svg class="question-plot-svg" viewBox="0 0 620 180" role="img" aria-label="二阶系统阶跃响应图"><line class="question-plot-axis" x1="20" y1="150" x2="600" y2="150"/><line class="question-plot-axis" x1="20" y1="20" x2="20" y2="160"/><path class="question-plot-line" d="' + path + '"/>' + peaks + '</svg></div><div class="question-plot-info" data-question-plot-info aria-live="polite">将鼠标悬停或点击图中点查看具体信息</div></section>';
       }
     } catch (_) {
       return '<div class="question-visual-unavailable">图形预览暂不可用，请先核对题目参数。</div>';
@@ -740,10 +740,16 @@
       const info = $("[data-question-plot-info]", visual);
       let scale = 1;
       viewport.addEventListener("wheel", (event) => {
+        const nextScale = Math.min(3, Math.max(1, scale * (event.deltaY < 0 ? 1.12 : 0.89)));
+        if (nextScale === scale) return;
         event.preventDefault();
-        scale = Math.min(3, Math.max(1, scale * (event.deltaY < 0 ? 1.12 : 0.89)));
-        svg.style.transform = "scale(" + scale.toFixed(2) + ")";
-        info.textContent = "当前缩放 " + Math.round(scale * 100) + "%；点击点查看具体信息";
+        scale = nextScale;
+        // A transform enlarges the pixels but does not reliably enlarge an
+        // SVG's scrollable layout box. Grow the SVG itself so the viewport can
+        // pan to every part of a zoomed chart instead of clipping its edges.
+        svg.style.transform = "none";
+        svg.style.width = (scale * 100).toFixed(2) + "%";
+        info.textContent = "当前缩放 " + Math.round(scale * 100) + "%；可拖动滚动条查看完整图形，点击点查看具体信息";
       }, { passive: false });
       visual.addEventListener("click", (event) => {
         const point = event.target.closest("[data-point-info]");
