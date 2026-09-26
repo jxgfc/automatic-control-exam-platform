@@ -1155,7 +1155,7 @@ footer {
 .question-visual-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: #24463a; }
 .question-visual-heading span { color: #7b8c86; font-size: .76rem; }
 .question-plot-viewport { max-width: 100%; overflow: auto; border-radius: 10px; background: #fff; cursor: zoom-in; }
-.question-plot-svg { display: block; width: 100%; min-width: 520px; height: auto; transform-origin: center; transition: transform .12s ease-out; }
+.question-plot-svg { display: block; width: 100%; min-width: 520px; height: auto; transform-origin: top left; transition: width .12s ease-out; }
 .question-plot-axis { stroke: #a9b8b1; stroke-width: 1; }
 .question-plot-line { fill: none; stroke: #176b4d; stroke-width: 2; }
 .question-plot-point { cursor: pointer; stroke: #b3403b; stroke-width: 1.5; fill: #fff; }
@@ -5329,6 +5329,29 @@ body:has(.personal-site-home) {
 .question-plot-svg {
   min-width: min(520px, 100%);
   max-width: none;
+}
+
+/* The five-button practice toolbar has a fixed desktop grid above.  At tablet
+   widths that grid was wider than the reading card, so the last buttons were
+   clipped by the question-bank surface (the document itself still reported no
+   horizontal overflow, which made the defect easy to miss).  Collapse the
+   toolbar after the final product-polish rules so this override wins at every
+   narrow breakpoint. */
+@media (max-width: 860px) {
+  .practice-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .practice-actions .primary-button {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 470px) {
+  .practice-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1041px) {
